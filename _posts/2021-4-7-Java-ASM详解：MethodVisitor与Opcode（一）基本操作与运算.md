@@ -384,7 +384,7 @@ x=i/l/f/d
 		
 这个字节码用于计算除法（a/b）。注意：如果计算时数字溢出、下溢或精度丢失，这个字节码也不会反馈任何警告。
 
-对于整数（int和long），这个字节码只会保留商的整数部分。
+对于整数（int和long），这个字节码只会保留商的整数部分。如果除数为0，这个字节码会抛出`java.lang.ArithmeticException: / by zero`
 
 对于浮点数（double和float），这个字节码运算为：
 
@@ -417,8 +417,6 @@ x=i/l/f/d
 		mv.visitInsn(DREM);
 		
 这个字节码用于计算取余操作（a%b）。注意：如果计算时数字溢出、下溢或精度丢失，这个字节码也不会反馈任何警告。
-
-对于整数（int和long），如果除数为0，这个字节码会抛出`java.lang.ArithmeticException: / by zero`
 
 对于浮点数（double和float），这个字节码运算为：
 
@@ -476,7 +474,7 @@ x=i/l
 	使用范例：
 		mv.visitInsn(LOR);
 		
-这个字节码用于计算按位或操作（a|b）。
+这个字节码用于计算按位或操作（a\|b）。
 
 <h2>[按位异或运算字节码：<i>x</i>xor]</h2>
 
