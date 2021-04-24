@@ -108,7 +108,7 @@
 
 山羊是这个版本新增加的一种生物，现在没有自然生成。它的主要特性是跳跃、挤奶，现在冲撞AI还没有加入，但是已经写了"isScreamingGoat"这个字段，应该在下个版本就能加入。
 
-![山羊](/resources/20210404/goats.png)
+![山羊](https://i0.hdslb.com/bfs/article/a0010bb09b711629eea220d3b16d55f413b48322.png@1320w_700h.png)
 
 先说说跳跃的特性。山羊的跳跃由两个类控制：LongJumpMidJump和LongJumpToRandomPos。
 
@@ -204,7 +204,7 @@
 
 光源方块本身是基岩版的专属，在此版本也加入了Java版，它是一种看不见的方块，不阻碍天空光，类似屏障只能手持同类物品才能看到，能散发出指定强度的方块光，同时也是一个含水方块。
 
-![光源方块](/resources/20210404/light.png)
+![光源方块](https://i0.hdslb.com/bfs/article/6464c6f7ce794e86c67e444e3486c78db342fa91.png@1320w_700h.png)
 
 它的获取和同样身为"OP方块"的命令方块、结构方块、拼图方块、结构空位一样需要用give指令。获取它需要输入`/give @s minecraft:light`。如果要获得指定亮度的光源方块物品（默认为15级亮度方块），就要输入`/give @s minecraft:light{"BlockStateTag":{"level":<亮度0-15>}}`。同样，对一个已经放置的光源方块中建选取也能获得物品（必须手持另一个光源方块）。
 
@@ -243,7 +243,7 @@
 
 1.当着火的生物实体进入细雪内，火会熄灭并且这个细雪方块消失。
 
-![骷髅着火走入细雪中，细雪消失](/resources/20210404/clear_fire.png)
+![骷髅着火走入细雪中，细雪消失](https://i0.hdslb.com/bfs/article/39c18ec18b9ee0b4c7349faf57bbe3251149a319.png@1320w_700h.png)
 
 2.下落速度变为1.5（之前是0.99）
 
@@ -290,7 +290,7 @@
 	
 4.骷髅转变为流浪者从进入细雪的140tick开始，再经过300tick转变为流浪者。
 
-![骷髅转化为流浪者](/resources/20210404/ske_stray.png)
+![骷髅转化为流浪者](https://i0.hdslb.com/bfs/article/569830df4f9c1b2735dc1e66aa9514a4c67d82b9.png@1320w_700h.png)
 
 	// Skeleton类中的一部分代码，执行游戏刻
 	public void tick() {
