@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>http://nickid2018.github.io/2021/02/13/Java-ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AASM%E5%BA%93%E4%BD%BF%E7%94%A8/</loc>
+    
+    <lastmod>2021-08-30</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://nickid2018.github.io/2021/08/08/JEP-412-Foreign-Function-Memory-FFM-API-%E5%A4%96%E9%83%A8%E5%87%BD%E6%95%B0%E4%B8%8E%E5%86%85%E5%AD%98API/</loc>
+    
+    <lastmod>2021-08-30</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://nickid2018.github.io/2021/03/07/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/</loc>
+    
+    <lastmod>2021-08-29</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>http://nickid2018.github.io/2021/04/07/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AMethodVisitor%E4%B8%8EOpcode%EF%BC%88%E4%B8%80%EF%BC%89%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C%E4%B8%8E%E8%BF%90%E7%AE%97/</loc>
+    
+    <lastmod>2021-08-28</lastmod>
+    
+  </url>
+  
+
+  <url>
+    <loc>http://nickid2018.github.io/</loc>
+    <lastmod>2021-08-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  
+  <url>
+    <loc>http://nickid2018.github.io/tags/Java/</loc>
+    <lastmod>2021-08-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+
+  
+</urlset>
