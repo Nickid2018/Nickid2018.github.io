@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title> Java ASM详解： 基础知识 · Nickid2018的博客</title><meta name="description" content="Java ASM详解： 基础知识 - Nickid2018"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/css/prontera.css"><link rel="search" type="application/opensearchdescription+xml" href="http://Nickid2018.github.io/atom.xml" title="Nickid2018的博客"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title> Java ASM详解： 基础知识 · Nickid2018的博客</title><meta name="description" content="Java ASM详解： 基础知识 - Nickid2018"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/images/favicon.ico"><link rel="stylesheet" href="/css/prontera.css"><link rel="search" type="application/opensearchdescription+xml" href="http://Nickid2018.github.io/atom.xml" title="Nickid2018的博客"><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
 </head><body><header class="feature-header"><nav class="component-nav"><ul><div class="logo-container"><a href="/"><h2 class="title">Nickid2018的博客</h2></a></div><a href="/" target="_self" class="li component-nav-item"><p>INDEX</p></a><a href="/archives" target="_self" class="li component-nav-item"><p>ARCHIVES</p></a><ul class="shortcut-icons"><a href="https://github.com/Nickid2018" target="_blank"><img src="/images/github.svg" class="icon"></a></ul></ul></nav></header><main class="container"><div id="post-container"><div class="post"><article class="post-block"><h1 class="post-title">Java ASM详解： 基础知识</h1><div class="post-info">Mar 7, 2021</div><div class="post-content"><p>首先第一个问题：<br>ASM是什么，字节码又是什么</p>
 <blockquote>
 <p>ASM是一个Java字节码分析、创建和修改的开源应用框架。它可以动态生成二进制格式的stub类或其他代理类，或者在类被Java虚拟机装入内存之前，动态修改类。在ASM中提供了诸多的API用于对类的内容进行字节码操作的方法。与传统的BCEL和SERL不同，在ASM中提供了更为优雅和灵活的操作字节码的方式</p>
@@ -24,7 +24,8 @@
 
 <p><font color="#66ccff" size="+1">1.ASMifier: 自动生成ASM代码</font></p>
 <p>ASM库中有不少实用类，为了了解晦涩难懂的ASM代码，可以用ASMifier来进行解析。这是一个可执行类，你可以通过java.exe运行它。</p>
-<p>运行方法：下载ASM的jar（比如asm-all-6.0_beta.jar）或者从你的.m2文件夹（asm-util或者asm-all）里面找到它，然后运行：</p>
+<p><font color="#ff0000">注意：在9.0已经没有这个类了</font></p>
+<p>运行方法：下载ASM的jar（比如asm-all-6.0_beta.jar）或者从你的.m2文件夹（asm-all）里面找到它，然后运行：</p>
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -classpath asm-all-6.0_BETA.jar org.objectweb.asm.util.ASMifier DemoDump.class</span><br></pre></td></tr></table></figure>
 
 <p>你会得到这样的输出：</p>
