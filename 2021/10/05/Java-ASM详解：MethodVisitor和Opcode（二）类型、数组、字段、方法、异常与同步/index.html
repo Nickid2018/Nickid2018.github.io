@@ -1,81 +1,351 @@
-<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title> Java ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步 · Nickid2018的博客</title><meta name="description" content="Java ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步 - Nickid2018"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/images/favicon.ico"><link rel="stylesheet" href="/css/prontera.css"><link rel="search" type="application/opensearchdescription+xml" href="http://Nickid2018.github.io/atom.xml" title="Nickid2018的博客"><!-- ------><script src="/script/headLinkSubmit.js"></script><script src="/script/headCount.js"></script><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
-</head><body><header class="feature-header"><nav class="component-nav"><ul><div class="logo-container"><a href="/"><h2 class="title">Nickid2018的博客</h2></a></div><a href="/" target="_self" class="li component-nav-item"><p>INDEX</p></a><a href="/archives" target="_self" class="li component-nav-item"><p>ARCHIVES</p></a><ul class="shortcut-icons"><a href="https://github.com/Nickid2018" target="_blank"><img src="/images/github.svg" class="icon"></a></ul></ul></nav></header><main class="container"><div id="post-container"><div class="post"><article class="post-block"><h1 class="post-title">Java ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步</h1><div class="post-info">Oct 5, 2021</div><div class="post-content"><p>上次讲过了操作栈与数值运算操作，这篇专栏主要讲ASM中有关于类型、数组与方法调用的字节码。</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  <title>Java ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步 | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.jpg)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2021-10-05T12:22:46.000Z" itemprop="datePublished">2021-10-05</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>上次讲过了操作栈与数值运算操作，这篇专栏主要讲ASM中有关于类型、数组与方法调用的字节码。</p>
 <p><em>P.S.ASM库已经更新到了9.2版本，可以试试解析Java 18的类了。</em></p>
-<h1 id="一-有关于类型的字节码"><a href="#一-有关于类型的字节码" class="headerlink" title="一.有关于类型的字节码"></a>一.有关于类型的字节码</h1><p>有关于类型的字节码都是用visitTypeInsn进行写入的。这类字节码共有4个：NEW，ANEWARRAY，INSTANCEOF和CHECKCAST。ANEWARRAY在之后的数组字节码里面会仔细去讲。</p>
-<h2 id="1-new"><a href="#1-new" class="headerlink" title="[1. new]"></a>[1. new]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：无</span><br><span class="line">输出：一个指定类型的对象</span><br><span class="line">方法：visitTypeInsn</span><br><span class="line">参数：类型</span><br><span class="line">使用范例：</span><br><span class="line">	mv.visitTypeInsn(NEW, <span class="string">&quot;java/lang/Object&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h2 id="有关于类型的字节码"><a href="#有关于类型的字节码" class="headerlink" title="有关于类型的字节码"></a>有关于类型的字节码</h2><p>有关于类型的字节码都是用visitTypeInsn进行写入的。这类字节码共有4个：NEW，ANEWARRAY，INSTANCEOF和CHECKCAST。ANEWARRAY在之后的数组字节码里面会仔细去讲。</p>
+<h3 id="new"><a href="#new" class="headerlink" title="new"></a>new</h3><pre><code class="hljs Java">输入：无
+输出：一个指定类型的对象
+方法：visitTypeInsn
+参数：类型
+使用范例：
+	mv.visitTypeInsn(NEW, <span class="hljs-string">&quot;java/lang/Object&quot;</span>);</code></pre>
 
 <p>NEW只进行创建对象，不负责调用构造函数，所以内部字段的值都为默认值。调用构造函数必须用invokespecial字节码进行调用（下文）。</p>
 <p>在调用这个字节码时，如果指向的类没有初始化，就它的调用静态初始化函数&lt;clinit&gt;。如果在初始化中发生异常就会抛出错误。如果目标类的类格式有误，则抛出异常。如果目标类时抽象的，则抛出<code>InstantiationError</code>。</p>
-<h2 id="2-instanceof"><a href="#2-instanceof" class="headerlink" title="[2. instanceof]"></a>[2. instanceof]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象</span><br><span class="line">输出：布尔值，代表是否为指定类的对象（栈上表示为一个四字节数据）</span><br><span class="line">方法：visitTypeInsn</span><br><span class="line">参数：类型（对于数组是描述符）</span><br><span class="line">使用范例：</span><br><span class="line">  mv.visitTypeInsn(INSTANCEOF, <span class="string">&quot;java/lang/String&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="instanceof"><a href="#instanceof" class="headerlink" title="instanceof"></a>instanceof</h3><pre><code class="hljs Java">输入：一个对象
+输出：布尔值，代表是否为指定类的对象（栈上表示为一个四字节数据）
+方法：visitTypeInsn
+参数：类型（对于数组是描述符）
+使用范例：
+  mv.visitTypeInsn(INSTANCEOF, <span class="hljs-string">&quot;java/lang/String&quot;</span>);</code></pre>
 
 <p>instanceof用于检查对象是否为这个类型的实例，如果是则返回boolean值true，即操作栈上的一个int数据1；如果不是就返回0。</p>
 <p>对于null对象，该字节码永远返回0。</p>
-<h2 id="3-checkcast"><a href="#3-checkcast" class="headerlink" title="[3. checkcast]"></a>[3. checkcast]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象</span><br><span class="line">输出：类型检查后的对象</span><br><span class="line">方法：visitTypeInsn</span><br><span class="line">参数：类型（对于数组是描述符）</span><br><span class="line">使用范例：</span><br><span class="line">  mv.visitTypeInsn(CHECKCAST, <span class="string">&quot;java/io/InputStream&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="checkcast"><a href="#checkcast" class="headerlink" title="checkcast"></a>checkcast</h3><pre><code class="hljs Java">输入：一个对象
+输出：类型检查后的对象
+方法：visitTypeInsn
+参数：类型（对于数组是描述符）
+使用范例：
+  mv.visitTypeInsn(CHECKCAST, <span class="hljs-string">&quot;java/io/InputStream&quot;</span>);</code></pre>
 
 <p>checkcast用于检查对象的类型，类似于instanceof。但不同的是，如果无法将对象转换为指定类型，该字节码会抛出ClassCastException。这个字节码经常见于泛型中。</p>
 <p>加入这个字节码通常是为了指定对象是某个类型好让验证器验证，在局部变量无法得知确切类型时必须加入此字节码保证验证通过（运行时报错就是另一回事了）。</p>
 <p>下面是这三个字节码组合的例子：</p>
 <p>要生成的Java代码如下：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">testTypeASM</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  Object object = <span class="keyword">new</span> String(<span class="string">&quot;Hello&quot;</span>);</span><br><span class="line">  <span class="keyword">boolean</span> bool = object <span class="keyword">instanceof</span> String;</span><br><span class="line">  <span class="keyword">return</span> (String) object;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> String <span class="hljs-title">testTypeASM</span><span class="hljs-params">()</span> </span>&#123;
+  Object object = <span class="hljs-keyword">new</span> String(<span class="hljs-string">&quot;Hello&quot;</span>);
+  <span class="hljs-keyword">boolean</span> bool = object <span class="hljs-keyword">instanceof</span> String;
+  <span class="hljs-keyword">return</span> (String) object;
+&#125;</code></pre>
 
 <p>对应的生成这段代码的字节码程序如下：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line"><span class="comment">// ---- 第一行语句 -----</span></span><br><span class="line">mv.visitTypeInsn(NEW, <span class="string">&quot;java/lang/String&quot;</span>);</span><br><span class="line">mv.visitInsn(DUP); <span class="comment">// 栈上复制一份对象</span></span><br><span class="line">mv.visitLdcInsn(<span class="string">&quot;Hello&quot;</span>);</span><br><span class="line">mv.visitMethodInsn(INVOKESPECIAL, <span class="string">&quot;java/lang/String&quot;</span>, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="keyword">false</span>); <span class="comment">// 执行构造函数</span></span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">0</span>); <span class="comment">// 存在局部变量表0号位</span></span><br><span class="line"><span class="comment">// ---- 第二行语句 -----</span></span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>); <span class="comment">// 取出局部变量object</span></span><br><span class="line">mv.visitTypeInsn(INSTANCEOF, <span class="string">&quot;java/lang/String&quot;</span>);</span><br><span class="line">mv.visitVarInsn(ISTORE, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// ---- 第三行语句 -----</span></span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">mv.visitTypeInsn(CHECKCAST, <span class="string">&quot;java/lang/String&quot;</span>); <span class="comment">// 注：此处可以不加这个CHECKCAST，因为局部变量表已知是String。如果局部变量表无法判断是否真的为String且没有加入这个语句，在验证时下方ARETURN字节码会报错</span></span><br><span class="line">mv.visitInsn(ARETURN);</span><br><span class="line"><span class="comment">// ---- 结束 ----</span></span><br><span class="line">mv.visitMaxs(<span class="number">3</span>, <span class="number">2</span>);</span><br><span class="line">mv.visitEnd();</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+<span class="hljs-comment">// ---- 第一行语句 -----</span>
+mv.visitTypeInsn(NEW, <span class="hljs-string">&quot;java/lang/String&quot;</span>);
+mv.visitInsn(DUP); <span class="hljs-comment">// 栈上复制一份对象</span>
+mv.visitLdcInsn(<span class="hljs-string">&quot;Hello&quot;</span>);
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/String&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 执行构造函数</span>
+mv.visitVarInsn(ASTORE, <span class="hljs-number">0</span>); <span class="hljs-comment">// 存在局部变量表0号位</span>
+<span class="hljs-comment">// ---- 第二行语句 -----</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// 取出局部变量object</span>
+mv.visitTypeInsn(INSTANCEOF, <span class="hljs-string">&quot;java/lang/String&quot;</span>);
+mv.visitVarInsn(ISTORE, <span class="hljs-number">1</span>);
+<span class="hljs-comment">// ---- 第三行语句 -----</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitTypeInsn(CHECKCAST, <span class="hljs-string">&quot;java/lang/String&quot;</span>); <span class="hljs-comment">// 注：此处可以不加这个CHECKCAST，因为局部变量表已知是String。如果局部变量表无法判断是否真的为String且没有加入这个语句，在验证时下方ARETURN字节码会报错</span>
+mv.visitInsn(ARETURN);
+<span class="hljs-comment">// ---- 结束 ----</span>
+mv.visitMaxs(<span class="hljs-number">3</span>, <span class="hljs-number">2</span>);
+mv.visitEnd();</code></pre>
 
-<h1 id="二-数组操作的字节码"><a href="#二-数组操作的字节码" class="headerlink" title="二.数组操作的字节码"></a>二.数组操作的字节码</h1><p>数组操作的字节码一共有20个，其中加载指令8个，存储指令8个，三个创建还有一个获取数组长度的字节码。</p>
-<h2 id="1-newarray"><a href="#1-newarray" class="headerlink" title="[1. newarray]"></a>[1. newarray]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：<span class="keyword">int</span>，代表数组长度</span><br><span class="line">输出：指定长度的数组</span><br><span class="line">方法：visitIntInsn</span><br><span class="line">参数：数组的类型，有<span class="number">8</span>个常量值分别代表了不同的值类型</span><br><span class="line">使用范例：</span><br><span class="line">  mv.visitIntInsn(NEWARRAY, T_INT);</span><br></pre></td></tr></table></figure>
+<h2 id="数组操作的字节码"><a href="#数组操作的字节码" class="headerlink" title="数组操作的字节码"></a>数组操作的字节码</h2><p>数组操作的字节码一共有20个，其中加载指令8个，存储指令8个，三个创建还有一个获取数组长度的字节码。</p>
+<h3 id="newarray"><a href="#newarray" class="headerlink" title="newarray"></a>newarray</h3><pre><code class="hljs Java">输入：<span class="hljs-keyword">int</span>，代表数组长度
+输出：指定长度的数组
+方法：visitIntInsn
+参数：数组的类型，有<span class="hljs-number">8</span>个常量值分别代表了不同的值类型
+使用范例：
+  mv.visitIntInsn(NEWARRAY, T_INT);</code></pre>
 
 <p>和newarray字节码用于创建基本类型的数组，它的参数代表了它的类型，在Opcodes类中一共有8个：T_BOOLEAN（boolean），T_CHAR（char），T_FLOAT（float），T_DOUBLE（double），T_BYTE（byte），T_SHORT（short），T_INT（int）和T_LONG（long）。</p>
 <p>如果数组长度小于0，这个字节码会抛出<code>NegativeArraySizeException</code>。</p>
-<h2 id="2-anewarray"><a href="#2-anewarray" class="headerlink" title="[2. anewarray]"></a>[2. anewarray]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：<span class="keyword">int</span>，代表数组长度</span><br><span class="line">输出：指定长度的数组</span><br><span class="line">方法：visitTypeInsn</span><br><span class="line">参数：类型</span><br><span class="line">使用范例：</span><br><span class="line">  mv.visitTypeInsn(ANEWARRAY, <span class="string">&quot;java/lang/String&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="anewarray"><a href="#anewarray" class="headerlink" title="anewarray"></a>anewarray</h3><pre><code class="hljs Java">输入：<span class="hljs-keyword">int</span>，代表数组长度
+输出：指定长度的数组
+方法：visitTypeInsn
+参数：类型
+使用范例：
+  mv.visitTypeInsn(ANEWARRAY, <span class="hljs-string">&quot;java/lang/String&quot;</span>);</code></pre>
 
 <p>基本类型的数组由newarray创建，而不是基本类型的数组由anewarray创建。</p>
 <p>和newarray一样，如果数组长度小于0，这个字节码会抛出<code>NegativeArraySizeException</code>。</p>
-<h2 id="3-multianewarray"><a href="#3-multianewarray" class="headerlink" title="[3. multianewarray]"></a>[3. multianewarray]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">输入：一系列的<span class="keyword">int</span>，代表多维数组中每一维的长度</span><br><span class="line">输出：多维数组</span><br><span class="line">方法：visitMultiANewArrayInsn</span><br><span class="line">参数：描述符和维度</span><br><span class="line">使用范例：</span><br><span class="line">  mv.visitMultiANewArrayInsn(<span class="string">&quot;[[Ljava/lang/String;&quot;</span>, <span class="number">2</span>);</span><br><span class="line">  mv.visitMultiANewArrayInsn(<span class="string">&quot;[[[I&quot;</span>, <span class="number">3</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="multianewarray"><a href="#multianewarray" class="headerlink" title="multianewarray"></a>multianewarray</h3><pre><code class="hljs Java">输入：一系列的<span class="hljs-keyword">int</span>，代表多维数组中每一维的长度
+输出：多维数组
+方法：visitMultiANewArrayInsn
+参数：描述符和维度
+使用范例：
+  mv.visitMultiANewArrayInsn(<span class="hljs-string">&quot;[[Ljava/lang/String;&quot;</span>, <span class="hljs-number">2</span>);
+  mv.visitMultiANewArrayInsn(<span class="hljs-string">&quot;[[[I&quot;</span>, <span class="hljs-number">3</span>);</code></pre>
 
 <p>创建一个多维数组，多维数组的描述符要与第二个参数维度相匹配。和另两个字节码相同，如果多维数组任意一维的长度小于0，这个字节码就会抛出<code>NegativeArraySizeException</code>。</p>
 <p>下面是使用这三个字节码的例子：</p>
 <p>Java代码：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>[] arrayInt = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">10</span>];</span><br><span class="line"><span class="keyword">int</span>[][] multi2Int = <span class="keyword">new</span> <span class="keyword">int</span>[<span class="number">100</span>][<span class="number">2</span>];</span><br><span class="line">String[] strings = <span class="keyword">new</span> String[<span class="number">30</span>];</span><br><span class="line">String[][] multiStrings = <span class="keyword">new</span> String[<span class="number">127</span>][<span class="number">128</span>];</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">int</span>[] arrayInt = <span class="hljs-keyword">new</span> <span class="hljs-keyword">int</span>[<span class="hljs-number">10</span>];
+<span class="hljs-keyword">int</span>[][] multi2Int = <span class="hljs-keyword">new</span> <span class="hljs-keyword">int</span>[<span class="hljs-number">100</span>][<span class="hljs-number">2</span>];
+String[] strings = <span class="hljs-keyword">new</span> String[<span class="hljs-number">30</span>];
+String[][] multiStrings = <span class="hljs-keyword">new</span> String[<span class="hljs-number">127</span>][<span class="hljs-number">128</span>];</code></pre>
 
 <p>生成这些代码的字节码程序：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line"><span class="comment">// new int[10]</span></span><br><span class="line">mv.visitIntInsn(BIPUSH, <span class="number">10</span>);</span><br><span class="line">mv.visitIntInsn(NEWARRAY, T_INT);</span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">0</span>);</span><br><span class="line"><span class="comment">// new int[100][2]</span></span><br><span class="line">mv.visitIntInsn(BIPUSH, <span class="number">100</span>);</span><br><span class="line">mv.visitInsn(ICONST_2);</span><br><span class="line">mv.visitMultiANewArrayInsn(<span class="string">&quot;[[I&quot;</span>, <span class="number">2</span>);</span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">1</span>);</span><br><span class="line"><span class="comment">// new String[30]</span></span><br><span class="line">mv.visitIntInsn(BIPUSH, <span class="number">30</span>);</span><br><span class="line">mv.visitTypeInsn(ANEWARRAY, <span class="string">&quot;java/lang/String&quot;</span>);</span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">2</span>);</span><br><span class="line"><span class="comment">// new String[127][128]</span></span><br><span class="line">mv.visitIntInsn(BIPUSH, <span class="number">127</span>);</span><br><span class="line">mv.visitIntInsn(SIPUSH, <span class="number">128</span>);</span><br><span class="line">mv.visitMultiANewArrayInsn(<span class="string">&quot;[[Ljava/lang/String;&quot;</span>, <span class="number">2</span>);</span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">3</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+<span class="hljs-comment">// new int[10]</span>
+mv.visitIntInsn(BIPUSH, <span class="hljs-number">10</span>);
+mv.visitIntInsn(NEWARRAY, T_INT);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">0</span>);
+<span class="hljs-comment">// new int[100][2]</span>
+mv.visitIntInsn(BIPUSH, <span class="hljs-number">100</span>);
+mv.visitInsn(ICONST_2);
+mv.visitMultiANewArrayInsn(<span class="hljs-string">&quot;[[I&quot;</span>, <span class="hljs-number">2</span>);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">1</span>);
+<span class="hljs-comment">// new String[30]</span>
+mv.visitIntInsn(BIPUSH, <span class="hljs-number">30</span>);
+mv.visitTypeInsn(ANEWARRAY, <span class="hljs-string">&quot;java/lang/String&quot;</span>);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">2</span>);
+<span class="hljs-comment">// new String[127][128]</span>
+mv.visitIntInsn(BIPUSH, <span class="hljs-number">127</span>);
+mv.visitIntInsn(SIPUSH, <span class="hljs-number">128</span>);
+mv.visitMultiANewArrayInsn(<span class="hljs-string">&quot;[[Ljava/lang/String;&quot;</span>, <span class="hljs-number">2</span>);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">3</span>);</code></pre>
 
 <p>在创建数组时，如果是一维数组就用newarray或anewarray。multianewarray也能创建一维数组，但是使用上面的两个更加高效。</p>
-<h2 id="4-arraylength"><a href="#4-arraylength" class="headerlink" title="[4. arraylength]"></a>[4. arraylength]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：数组</span><br><span class="line">输出：数组长度</span><br><span class="line">方法：visitInsn</span><br><span class="line">参数：无</span><br><span class="line">使用范例：</span><br><span class="line">	mv.visitInsn(ARRAYLENGTH);</span><br></pre></td></tr></table></figure>
+<h3 id="arraylength"><a href="#arraylength" class="headerlink" title="arraylength"></a>arraylength</h3><pre><code class="hljs Java">输入：数组
+输出：数组长度
+方法：visitInsn
+参数：无
+使用范例：
+	mv.visitInsn(ARRAYLENGTH);</code></pre>
 
 <p>获取数组的长度，返回int。如果数组输入为null，抛出空指针异常。</p>
-<h2 id="5-xaload"><a href="#5-xaload" class="headerlink" title="[5. xaload]"></a>[5. xaload]</h2><p>x=a,b,c,d,f,i,l,s, 其中b同时负责了byte和boolean</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：数组，<span class="keyword">int</span>类型的下标</span><br><span class="line">输出：数组元素</span><br><span class="line">方法：visitInsn</span><br><span class="line">参数：无</span><br><span class="line">使用范例：</span><br><span class="line">	mv.visitInsn(BALOAD);</span><br></pre></td></tr></table></figure>
+<h3 id="xaload"><a href="#xaload" class="headerlink" title="xaload"></a><em>x</em>aload</h3><p>x=a,b,c,d,f,i,l,s, 其中b同时负责了byte和boolean</p>
+<pre><code class="hljs Java">输入：数组，<span class="hljs-keyword">int</span>类型的下标
+输出：数组元素
+方法：visitInsn
+参数：无
+使用范例：
+	mv.visitInsn(BALOAD);</code></pre>
 
 <p>xaload的作用是从数组指定下标取元素。如果下标超过数组长度，抛出<code>ArrayIndexOutOfBoundsException</code>。对于多维数组的提取元素方式类似下面：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Java 代码：</span></span><br><span class="line"><span class="comment">// 设int[][] multi = new int[10][20];位于局部变量表0位</span></span><br><span class="line"><span class="keyword">return</span> multi[<span class="number">1</span>][<span class="number">4</span>];</span><br><span class="line"><span class="comment">// 字节码：</span></span><br><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">mv.visitInsn(ICONST_1);</span><br><span class="line">mv.visitInsn(AALOAD);</span><br><span class="line">mv.visitInsn(ICONST_4);</span><br><span class="line">mv.visitInsn(IALOAD);</span><br><span class="line">mv.visitInsn(IRETURN);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// Java 代码：</span>
+<span class="hljs-comment">// 设int[][] multi = new int[10][20];位于局部变量表0位</span>
+<span class="hljs-keyword">return</span> multi[<span class="hljs-number">1</span>][<span class="hljs-number">4</span>];
+<span class="hljs-comment">// 字节码：</span>
+<span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitInsn(ICONST_1);
+mv.visitInsn(AALOAD);
+mv.visitInsn(ICONST_4);
+mv.visitInsn(IALOAD);
+mv.visitInsn(IRETURN);</code></pre>
 
-<h2 id="6-xastore"><a href="#6-xastore" class="headerlink" title="[6. xastore]"></a>[6. xastore]</h2><p>x=a,b,c,d,f,i,l,s, 其中b同时负责了byte和boolean</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：数组，<span class="keyword">int</span>类型的下标，一个变量</span><br><span class="line">输出：无</span><br><span class="line">方法：visitInsn</span><br><span class="line">参数：无</span><br><span class="line">使用范例：</span><br><span class="line">	mv.visitInsn(BASTORE);</span><br></pre></td></tr></table></figure>
+<h3 id="xastore"><a href="#xastore" class="headerlink" title="xastore"></a><em>x</em>astore</h3><p>x=a,b,c,d,f,i,l,s, 其中b同时负责了byte和boolean</p>
+<pre><code class="hljs Java">输入：数组，<span class="hljs-keyword">int</span>类型的下标，一个变量
+输出：无
+方法：visitInsn
+参数：无
+使用范例：
+	mv.visitInsn(BASTORE);</code></pre>
 
 <p>将对象存入数组指定下标。如果下标超过数组长度，抛出<code>ArrayIndexOutOfBoundsException</code>。对于多维数组，存储对象需要和xaload一起配合。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Java 代码：</span></span><br><span class="line"><span class="comment">// 设int[][] multi = new int[10][20];位于局部变量表0位</span></span><br><span class="line">multi[<span class="number">1</span>][<span class="number">4</span>] = <span class="number">20</span>;</span><br><span class="line"><span class="comment">// 字节码：</span></span><br><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">mv.visitInsn(ICONST_1);</span><br><span class="line">mv.visitInsn(AALOAD);</span><br><span class="line">mv.visitInsn(ICONST_4);</span><br><span class="line">mv.visitIntInsn(BIPUSH, <span class="number">20</span>);</span><br><span class="line">mv.visitInsn(IASTORE);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// Java 代码：</span>
+<span class="hljs-comment">// 设int[][] multi = new int[10][20];位于局部变量表0位</span>
+multi[<span class="hljs-number">1</span>][<span class="hljs-number">4</span>] = <span class="hljs-number">20</span>;
+<span class="hljs-comment">// 字节码：</span>
+<span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitInsn(ICONST_1);
+mv.visitInsn(AALOAD);
+mv.visitInsn(ICONST_4);
+mv.visitIntInsn(BIPUSH, <span class="hljs-number">20</span>);
+mv.visitInsn(IASTORE);</code></pre>
 
-<h1 id="三-操作字段的字节码"><a href="#三-操作字段的字节码" class="headerlink" title="三.操作字段的字节码"></a>三.操作字段的字节码</h1><p>在代码中我们经常会调用类中的字段，例如<code>System.out</code>。Java提供了四个字节码用于访问和修改字段。</p>
-<h2 id="1-getfield"><a href="#1-getfield" class="headerlink" title="[1. getfield]"></a>[1. getfield]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象</span><br><span class="line">输出：对应字段的值</span><br><span class="line">方法：visitFieldInsn</span><br><span class="line">参数：字段所处的类、字段名、字段描述符</span><br><span class="line">使用范例：</span><br><span class="line">	mv.visitFieldInsn(GETFIELD, <span class="string">&quot;org/objectweb/asm/MethodVisitor&quot;</span>, <span class="string">&quot;mv&quot;</span>, <span class="string">&quot;Lorg/objectweb/asm/MethodVisitor;&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h2 id="操作字段的字节码"><a href="#操作字段的字节码" class="headerlink" title="操作字段的字节码"></a>操作字段的字节码</h2><p>在代码中我们经常会调用类中的字段，例如<code>System.out</code>。Java提供了四个字节码用于访问和修改字段。</p>
+<h3 id="getfield"><a href="#getfield" class="headerlink" title="getfield"></a>getfield</h3><pre><code class="hljs Java">输入：一个对象
+输出：对应字段的值
+方法：visitFieldInsn
+参数：字段所处的类、字段名、字段描述符
+使用范例：
+	mv.visitFieldInsn(GETFIELD, <span class="hljs-string">&quot;org/objectweb/asm/MethodVisitor&quot;</span>, <span class="hljs-string">&quot;mv&quot;</span>, <span class="hljs-string">&quot;Lorg/objectweb/asm/MethodVisitor;&quot;</span>);</code></pre>
 
 <p>getfield用于获取非静态字段的值。如果它作用目标是一个静态字段，则在类连接验证时抛出<code>IncompatibleClassChangeError</code>。</p>
 <p>如果输入的对象是null，这个字节码会在运行时抛出空指针异常。</p>
 <p>这个字节码不能调用数组的length字段，在编译的时候length字段会自行转变成arraylength字节码。</p>
-<h2 id="2-getstatic"><a href="#2-getstatic" class="headerlink" title="[2. getstatic]"></a>[2. getstatic]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：无</span><br><span class="line">输出：对应字段的值</span><br><span class="line">方法：visitFieldInsn</span><br><span class="line">参数：字段所处的类、字段名、字段描述符</span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitFieldInsn(GETSTATIC, <span class="string">&quot;java/lang/System&quot;</span>, <span class="string">&quot;out&quot;</span>, <span class="string">&quot;Ljava/io/PrintStream;&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="getstatic"><a href="#getstatic" class="headerlink" title="getstatic"></a>getstatic</h3><pre><code class="hljs Java">输入：无
+输出：对应字段的值
+方法：visitFieldInsn
+参数：字段所处的类、字段名、字段描述符
+使用范例：
+ mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);</code></pre>
 
 <p>getstatic用于获取静态字段的值。如果它作用目标是一个非静态字段，则在类连接验证时抛出<code>IncompatibleClassChangeError</code>。</p>
-<h2 id="3-putfield"><a href="#3-putfield" class="headerlink" title="[3. putfield]"></a>[3. putfield]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象、准备修改成的对象</span><br><span class="line">输出：无</span><br><span class="line">方法：visitFieldInsn</span><br><span class="line">参数：字段所处的类、字段名、字段描述符</span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitFieldInsn(PUTFIELD, <span class="string">&quot;org/objectweb/asm/MethodVisitor&quot;</span>, <span class="string">&quot;mv&quot;</span>, <span class="string">&quot;Lorg/objectweb/asm/MethodVisitor;&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="putfield"><a href="#putfield" class="headerlink" title="putfield"></a>putfield</h3><pre><code class="hljs Java">输入：一个对象、准备修改成的对象
+输出：无
+方法：visitFieldInsn
+参数：字段所处的类、字段名、字段描述符
+使用范例：
+ mv.visitFieldInsn(PUTFIELD, <span class="hljs-string">&quot;org/objectweb/asm/MethodVisitor&quot;</span>, <span class="hljs-string">&quot;mv&quot;</span>, <span class="hljs-string">&quot;Lorg/objectweb/asm/MethodVisitor;&quot;</span>);</code></pre>
 
 <p>putfield用于修改非静态字段的值。如果它作用目标是一个静态字段，则在类连接验证时抛出<code>IncompatibleClassChangeError</code>。</p>
 <p>如果输入的对象是null，这个字节码会在运行时抛出空指针异常。</p>
 <p>对于final字段，如果不是在初始化对象时修改（构造函数中），那么就会抛出<code>IllegalAccessError</code>。</p>
-<h2 id="4-putstatic"><a href="#4-putstatic" class="headerlink" title="[4. putstatic]"></a>[4. putstatic]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：准备修改成的对象</span><br><span class="line">输出：无</span><br><span class="line">方法：visitFieldInsn</span><br><span class="line">参数：字段所处的类、字段名、字段描述符</span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitFieldInsn(PUTSTATIC, <span class="string">&quot;io/github/nickid2018/Constants&quot;</span>, <span class="string">&quot;test&quot;</span>, <span class="string">&quot;Z&quot;</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="putstatic"><a href="#putstatic" class="headerlink" title="putstatic"></a>putstatic</h3><pre><code class="hljs Java">输入：准备修改成的对象
+输出：无
+方法：visitFieldInsn
+参数：字段所处的类、字段名、字段描述符
+使用范例：
+ mv.visitFieldInsn(PUTSTATIC, <span class="hljs-string">&quot;io/github/nickid2018/Constants&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;Z&quot;</span>);</code></pre>
 
 <p>putstatic用于修改静态字段的值。如果它作用目标是一个非静态字段，则在类连接验证时抛出<code>IncompatibleClassChangeError</code>。</p>
 <p>对于final字段，如果不是在类初始化时修改（&lt;clinit&gt;中），那么就会抛出<code>IllegalAccessError</code>。</p>
-<h1 id="四-调用方法的字节码"><a href="#四-调用方法的字节码" class="headerlink" title="四.调用方法的字节码"></a>四.调用方法的字节码</h1><p>调用方法的字节码共有五个：invokevirtual，invokespecial，invokestatic，invokeinterface和invokedynamic。invokedynamic使用了BSM（BootStrap Method），讲解起来很复杂，所以这个要单独分出来一篇文章去讲。这篇文章主要讨论前四个。</p>
-<h2 id="1-invokevirtual"><a href="#1-invokevirtual" class="headerlink" title="[1. invokevirtual]"></a>[1. invokevirtual]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象，传入参数</span><br><span class="line">输出：与方法返回值有关</span><br><span class="line">方法：visitMethodInsn</span><br><span class="line">参数：方法所在的类，方法名，方法描述符，固定值<span class="keyword">false</span></span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitMethodInsn(INVOKEVIRTUAL, <span class="string">&quot;java/io/PrintStream&quot;</span>, <span class="string">&quot;println&quot;</span>, <span class="string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="keyword">false</span>);</span><br></pre></td></tr></table></figure>
+<h2 id="调用方法的字节码"><a href="#调用方法的字节码" class="headerlink" title="调用方法的字节码"></a>调用方法的字节码</h2><p>调用方法的字节码共有五个：invokevirtual，invokespecial，invokestatic，invokeinterface和invokedynamic。invokedynamic使用了BSM（BootStrap Method），讲解起来很复杂，所以这个要单独分出来一篇文章去讲。这篇文章主要讨论前四个。</p>
+<h3 id="invokevirtual"><a href="#invokevirtual" class="headerlink" title="invokevirtual"></a>invokevirtual</h3><pre><code class="hljs Java">输入：一个对象，传入参数
+输出：与方法返回值有关
+方法：visitMethodInsn
+参数：方法所在的类，方法名，方法描述符，固定值<span class="hljs-keyword">false</span>
+使用范例：
+ mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
 
 <p>这个字节码用于调用实例方法：如果对象是子类的对象且子类复写了这个方法，则调用子类的方法；如果对象就是该类的直接对象或者对象所属子类没有复写这个方法，就调用现在类的方法。</p>
 <p>在编译时，如果子类调用了父类的方法且子类没有实现此方法，那么方法所在的类要写为父类。如果使用<code>super</code>，要用invokespecial调用（下文）。</p>
@@ -83,92 +353,413 @@
 <p>如果方法调用目标是抽象的，并且在继承树上没有任何实现此方法的类，在调用时会抛出<code>AbstractMethodError</code>。</p>
 <p>如果方法调用目标是抽象的，而继承树上由多个实现此方法的类，且这些方法都是可被选中成为调用目标的方法（比如一个类继承于一个抽象类，又实现了两个接口，两个接口中都有一个同样的default方法可作为抽象类中抽象方法的实现目标），这时此字节码会抛出<code>IncompatibleClassChangeError</code>。</p>
 <p>如果方法调用目标是native的，且没有任何JNI连接查询到这个方法和哪个C函数相连接，这时这个字节码抛出<code>UnsatisfiedLinkError</code>。</p>
-<h2 id="2-invokespecial"><a href="#2-invokespecial" class="headerlink" title="[2. invokespecial]"></a>[2. invokespecial]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象，传入参数</span><br><span class="line">输出：与方法返回值有关</span><br><span class="line">方法：visitMethodInsn</span><br><span class="line">参数：方法所在的类，方法名，方法描述符，固定值<span class="keyword">false</span></span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitMethodInsn(INVOKESPECIAL, <span class="string">&quot;java/lang/Object&quot;</span>, <span class="string">&quot;equals&quot;</span>, <span class="string">&quot;(Ljava/lang/Object;)Z&quot;</span>, <span class="keyword">false</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="invokespecial"><a href="#invokespecial" class="headerlink" title="invokespecial"></a>invokespecial</h3><pre><code class="hljs Java">输入：一个对象，传入参数
+输出：与方法返回值有关
+方法：visitMethodInsn
+参数：方法所在的类，方法名，方法描述符，固定值<span class="hljs-keyword">false</span>
+使用范例：
+ mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/Object&quot;</span>, <span class="hljs-string">&quot;equals&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Object;)Z&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
 
 <p>invokespecial类似于invokevirtual，但不同的是，它和调用方法的对象的类型无关：它的方法调用对象就是字节码内部标定的方法，如果这个类找不到就寻找直接超类的方法，而不是像invokevirtual要考虑继承树所有的方法。</p>
 <p>这个方法经常在构造函数中看到，因为无论什么类都需要有一个构造函数，而构造函数内部必须自动调用父类构造函数。</p>
 <p>一个默认的构造函数类似于下面：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="title">Test</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">super</span>();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span> </span>&#123;
+
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">Test</span><span class="hljs-params">()</span> </span>&#123;
+    <span class="hljs-keyword">super</span>();
+  &#125;
+&#125;</code></pre>
 
 <p>在生成类时，如果没有自定义其他构造函数，就要加上这个默认构造函数：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">ClassWriter cw = <span class="keyword">new</span> ClassWriter(<span class="number">0</span>);</span><br><span class="line">cw.visit(V17, ACC_PUBLIC + ACC_SUPER, <span class="string">&quot;Test&quot;</span>, <span class="keyword">null</span>, <span class="string">&quot;java/lang/Object&quot;</span>, <span class="keyword">null</span>);</span><br><span class="line">MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;()V&quot;</span>, <span class="keyword">null</span>, <span class="keyword">null</span>);</span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>); <span class="comment">// 加载自身(this)</span></span><br><span class="line">mv.visitMethodInsn(INVOKESPECIAL, <span class="string">&quot;java/lang/Object&quot;</span>, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;()V&quot;</span>, <span class="keyword">false</span>); <span class="comment">// 调用父类构造函数</span></span><br><span class="line">mv.visitInsn(RETURN);</span><br><span class="line">mv.visitMaxs(<span class="number">1</span>, <span class="number">1</span>);</span><br><span class="line">mv.visitEnd();</span><br><span class="line">cw.visitEnd();</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassWriter cw = <span class="hljs-keyword">new</span> ClassWriter(<span class="hljs-number">0</span>);
+cw.visit(V17, ACC_PUBLIC + ACC_SUPER, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;java/lang/Object&quot;</span>, <span class="hljs-keyword">null</span>);
+MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// 加载自身(this)</span>
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/Object&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用父类构造函数</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>);
+mv.visitEnd();
+cw.visitEnd();</code></pre>
 
-<h2 id="3-invokestatic"><a href="#3-invokestatic" class="headerlink" title="[3. invokestatic]"></a>[3. invokestatic]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象，传入参数</span><br><span class="line">输出：与方法返回值有关</span><br><span class="line">方法：visitMethodInsn</span><br><span class="line">参数：方法所在的类，方法名，方法描述符，固定值<span class="keyword">false</span></span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitMethodInsn(INVOKESTATIC, <span class="string">&quot;java/lang/Math&quot;</span>, <span class="string">&quot;sin&quot;</span>, <span class="string">&quot;(D)D&quot;</span>, <span class="keyword">false</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="invokestatic"><a href="#invokestatic" class="headerlink" title="invokestatic"></a>invokestatic</h3><pre><code class="hljs Java">输入：一个对象，传入参数
+输出：与方法返回值有关
+方法：visitMethodInsn
+参数：方法所在的类，方法名，方法描述符，固定值<span class="hljs-keyword">false</span>
+使用范例：
+ mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/Math&quot;</span>, <span class="hljs-string">&quot;sin&quot;</span>, <span class="hljs-string">&quot;(D)D&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
 
 <p>invokestatic用于调用静态方法，如果调用目标不是个静态方法，抛出<code>IncompatibleClassChangeError</code>。</p>
 <p>和invokevirtual一样，如果目标是个native方法而JNI找不到连接的C函数，该字节码抛出<code>UnsatisfiedLinkError</code>。</p>
-<h2 id="4-invokeinterface"><a href="#4-invokeinterface" class="headerlink" title="[4. invokeinterface]"></a>[4. invokeinterface]</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象，传入参数</span><br><span class="line">输出：与方法返回值有关</span><br><span class="line">方法：visitMethodInsn</span><br><span class="line">参数：方法所在的类，方法名，方法描述符，固定值<span class="keyword">true</span></span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitMethodInsn(INVOKEINTERFACE, <span class="string">&quot;java/util/Set&quot;</span>, <span class="string">&quot;clear&quot;</span>, <span class="string">&quot;()V&quot;</span>, <span class="keyword">true</span>);</span><br></pre></td></tr></table></figure>
+<h3 id="invokeinterface"><a href="#invokeinterface" class="headerlink" title="invokeinterface"></a>invokeinterface</h3><pre><code class="hljs Java">输入：一个对象，传入参数
+输出：与方法返回值有关
+方法：visitMethodInsn
+参数：方法所在的类，方法名，方法描述符，固定值<span class="hljs-keyword">true</span>
+使用范例：
+ mv.visitMethodInsn(INVOKEINTERFACE, <span class="hljs-string">&quot;java/util/Set&quot;</span>, <span class="hljs-string">&quot;clear&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">true</span>);</code></pre>
 
 <p>这个字节码类似于invokevirtual，异常情况的处理也和它类似。它用于调用接口方法，而不是像invokevirtual的实例方法。</p>
-<h1 id="五-抛出异常的字节码：athrow"><a href="#五-抛出异常的字节码：athrow" class="headerlink" title="五.抛出异常的字节码：athrow"></a>五.抛出异常的字节码：athrow</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">输入：一个Throwable对象</span><br><span class="line">输出：操作栈不变</span><br><span class="line">方法：visitInsn</span><br><span class="line">参数：无</span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitInsn(ATHROW);</span><br></pre></td></tr></table></figure>
+<h2 id="抛出异常的字节码：athrow"><a href="#抛出异常的字节码：athrow" class="headerlink" title="抛出异常的字节码：athrow"></a>抛出异常的字节码：athrow</h2><pre><code class="hljs Java">输入：一个Throwable对象
+输出：操作栈不变
+方法：visitInsn
+参数：无
+使用范例：
+ mv.visitInsn(ATHROW);</code></pre>
 
 <p>athrow负责将一个Throwable对象抛出。如果对象是null，那么就不会抛出这个null，而是抛出<code>NullPointerException</code>。</p>
 <p>通常情况下，我们都是直接new一个Throwable对象然后直接抛出，就像这样：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">throw</span> <span class="keyword">new</span> Exception(<span class="string">&quot;error!&quot;</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> Exception(<span class="hljs-string">&quot;error!&quot;</span>);</code></pre>
 
 <p>翻译为字节码如下：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line">mv.visitTypeInsn(NEW, <span class="string">&quot;java/lang/Exception&quot;</span>);</span><br><span class="line">mv.visitInsn(DUP);</span><br><span class="line">mv.visitLdcInsn(<span class="string">&quot;error!&quot;</span>);</span><br><span class="line">mv.visitMethodInsn(INVOKESPECIAL, <span class="string">&quot;java/lang/Exception&quot;</span>, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="keyword">false</span>);</span><br><span class="line">mv.visitInsn(ATHROW);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+mv.visitTypeInsn(NEW, <span class="hljs-string">&quot;java/lang/Exception&quot;</span>);
+mv.visitInsn(DUP);
+mv.visitLdcInsn(<span class="hljs-string">&quot;error!&quot;</span>);
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/Exception&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(ATHROW);</code></pre>
 
-<h1 id="六-同步字节码"><a href="#六-同步字节码" class="headerlink" title="六.同步字节码"></a>六.同步字节码</h1><p>同步操作共有两个字节码，monitorenter和monitorexit，成套使用。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">输入：一个对象</span><br><span class="line">输出：无</span><br><span class="line">方法：visitInsn</span><br><span class="line">参数：无</span><br><span class="line">使用范例：</span><br><span class="line"> mv.visitInsn(MONITORENTER);</span><br><span class="line"> mv.visitInsn(MONITOREXIT);</span><br></pre></td></tr></table></figure>
+<h2 id="同步字节码"><a href="#同步字节码" class="headerlink" title="同步字节码"></a>同步字节码</h2><p>同步操作共有两个字节码，monitorenter和monitorexit，成套使用。</p>
+<pre><code class="hljs Java">输入：一个对象
+输出：无
+方法：visitInsn
+参数：无
+使用范例：
+ mv.visitInsn(MONITORENTER);
+ mv.visitInsn(MONITOREXIT);</code></pre>
 
 <p>输入的对象必须是引用类型对象，不能是基本类型的值。</p>
 <p>使用同步块时，代码类似这样：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Object lock = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">0</span>];<span class="comment">//设0号位</span></span><br><span class="line"><span class="keyword">synchronized</span>(lock) &#123;</span><br><span class="line">  <span class="comment">//...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">Object lock = <span class="hljs-keyword">new</span> <span class="hljs-keyword">byte</span>[<span class="hljs-number">0</span>];<span class="hljs-comment">//设0号位</span>
+<span class="hljs-keyword">synchronized</span>(lock) &#123;
+  <span class="hljs-comment">//...</span>
+&#125;</code></pre>
 
 <p>对应的字节码：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line">mv.visitInsn(ICONST_0);</span><br><span class="line">mv.visitIntInsn(NEWARRAY, T_BYTE);</span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">0</span>);</span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">mv.visitInsn(MONITORENTER);</span><br><span class="line"><span class="comment">//...</span></span><br><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">mv.visitInsn(MONITOREXIT);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+mv.visitInsn(ICONST_0);
+mv.visitIntInsn(NEWARRAY, T_BYTE);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">0</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitInsn(MONITORENTER);
+<span class="hljs-comment">//...</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitInsn(MONITOREXIT);</code></pre>
 
 <p>monitorenter就是尝试加锁的操作。如果这个对象的监视器条目计数为0，此线程会把这个计数设置为1，这时此线程就是这个对象的监视器；如果不为0且线程不是该对象的监视器，线程会阻塞直到计数为0时重新尝试加锁；如果线程已经是这个对象的监视器，计数递增。</p>
 <p>monitorexit就是释放锁的操作。如果线程是这个对象的监视器，计数递减，当计数减为0时该线程就不是这个对象的监视器了。如果线程不是这个对象的监视器，这个字节码会抛出<code>IllegalMonitorStateException</code>。</p>
 <p>monitorenter可以和很多monitorexit一起出现，在一个方法的所有可能流程中的加锁次数和释放次数必须相同，否则在调用时会发生<code>IllegalMonitorStateException</code>。</p>
 <p>对于同步方法（访问标志含有ACC_SYNCHRONIZED），不需要手动对自身对象或类加锁。JVM在调用方法前隐式加锁，在调用之后隐式释放。</p>
-<h1 id="七-应用：计算两数之积"><a href="#七-应用：计算两数之积" class="headerlink" title="七.应用：计算两数之积"></a>七.应用：计算两数之积</h1><p>学到了这些字节码，接下来我们要试试用纯字节码解决这道简单的问题。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">输入：两个双精度浮点数a,b</span><br><span class="line">输出：一个保留5位小数部分的双精度浮点数，代表a*b</span><br><span class="line"></span><br><span class="line">例：</span><br><span class="line">3.22 6.11</span><br><span class="line">输出：</span><br><span class="line">19.67420</span><br></pre></td></tr></table></figure>
+<h2 id="应用：计算两数之积"><a href="#应用：计算两数之积" class="headerlink" title="应用：计算两数之积"></a>应用：计算两数之积</h2><p>学到了这些字节码，接下来我们要试试用纯字节码解决这道简单的问题。</p>
+<pre><code class="hljs plaintext">输入：两个双精度浮点数a,b
+输出：一个保留5位小数部分的双精度浮点数，代表a*b
+
+例：
+3.22 6.11
+输出：
+19.67420</code></pre>
 
 <p>在Java代码下，我们可以这样写：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 这里不写main方法，而是写了一个静态的test方法用于后续调用</span></span><br><span class="line"><span class="keyword">import</span> java.util.Scanner;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Test</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">test</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    Scanner scanner = <span class="keyword">new</span> Scanner(System.in);</span><br><span class="line">    <span class="keyword">double</span> a = scanner.nextDouble();</span><br><span class="line">    <span class="keyword">double</span> b = scanner.nextDouble();</span><br><span class="line">    System.out.printf(<span class="string">&quot;%.5f&quot;</span>, a * b);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// 这里不写main方法，而是写了一个静态的test方法用于后续调用</span>
+<span class="hljs-keyword">import</span> java.util.Scanner;
+
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span> </span>&#123;
+
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">()</span> </span>&#123;
+    Scanner scanner = <span class="hljs-keyword">new</span> Scanner(System.in);
+    <span class="hljs-keyword">double</span> a = scanner.nextDouble();
+    <span class="hljs-keyword">double</span> b = scanner.nextDouble();
+    System.out.printf(<span class="hljs-string">&quot;%.5f&quot;</span>, a * b);
+  &#125;
+&#125;</code></pre>
 
 <p>下面是用ASM生成的步骤：</p>
 <p>首先还是创建类和方法，不再多说。</p>
 <p>第一行，创建Scanner对象，这里用到的就是new。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span></span><br><span class="line">mv.visitTypeInsn(NEW, <span class="string">&quot;java/util/Scanner&quot;</span>);</span><br><span class="line">mv.visitInsn(DUP);</span><br><span class="line">mv.visitFieldInsn(GETSTATIC, <span class="string">&quot;java/lang/System&quot;</span>, <span class="string">&quot;in&quot;</span>, <span class="string">&quot;Ljava/io/InputStream;&quot;</span>);</span><br><span class="line">mv.visitMethodInsn(INVOKESPECIAL, <span class="string">&quot;java/util/Scanner&quot;</span>, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;(Ljava/io/InputStream;)V&quot;</span>, <span class="keyword">false</span>);</span><br><span class="line">mv.visitVarInsn(ASTORE, <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-comment">// 省略了ClassWriter和MethodVisitor的创建，mv是MethodVisitor实例</span>
+mv.visitTypeInsn(NEW, <span class="hljs-string">&quot;java/util/Scanner&quot;</span>);
+mv.visitInsn(DUP);
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;in&quot;</span>, <span class="hljs-string">&quot;Ljava/io/InputStream;&quot;</span>);
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/util/Scanner&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;(Ljava/io/InputStream;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">0</span>);</code></pre>
 
 <p>第二行和第三行都是读取double，这里是调用了Scanner的<code>nextDouble</code>方法，这里只给第二行的例子：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">mv.visitMethodInsn(INVOKEVIRTUAL, <span class="string">&quot;java/util/Scanner&quot;</span>, <span class="string">&quot;nextDouble&quot;</span>, <span class="string">&quot;()D&quot;</span>, <span class="keyword">false</span>);</span><br><span class="line">mv.visitVarInsn(DSTORE, <span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/util/Scanner&quot;</span>, <span class="hljs-string">&quot;nextDouble&quot;</span>, <span class="hljs-string">&quot;()D&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitVarInsn(DSTORE, <span class="hljs-number">1</span>);</code></pre>
 
 <p>接下来是个重头戏。首先来看看<code>PrintStream::printf</code>的定义：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> PrintStream <span class="title">printf</span><span class="params">(String format, Object ... args)</span></span></span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> PrintStream <span class="hljs-title">printf</span><span class="hljs-params">(String format, Object ... args)</span></span></code></pre>
 
 <p>可以看到，args是个不定长参数，这怎么表示呢？</p>
 <p>在Java中，不定长参数都被解析为数组，也就是说，它在字节码中的表示其实是这样的：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> PrintStream <span class="title">printf</span><span class="params">(String format, Object[] args)</span></span></span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> PrintStream <span class="hljs-title">printf</span><span class="hljs-params">(String format, Object[] args)</span></span></code></pre>
 
 <p>现在我们需要传递的参数就是一个字符串和一个Object数组。可是double不是引用类型，这又要怎么办呢？</p>
 <p>在Java中，基本类型都有它们的“包装类”。double的包装类是java.lang.Double，通过<code>Double::valueOf</code>方法就可以把double值转变为Double对象，也就是装箱操作。在平常编写时，Java编译器会自动为我们添加装箱操作，也就是自动装箱。</p>
 <p>经过这样的解析，最后这句话的Java代码表示就像这样：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">System.out.printf(<span class="string">&quot;%.5f&quot;</span>, <span class="keyword">new</span> Object[] &#123; Double.valueOf(a * b) &#125;);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">System.out.printf(<span class="hljs-string">&quot;%.5f&quot;</span>, <span class="hljs-keyword">new</span> Object[] &#123; Double.valueOf(a * b) &#125;);</code></pre>
 
 <p>其中Object[]是一个长度为1的数组，也就是先创建它然后将Double对象用aastore字节码放入就行。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">mv.visitFieldInsn(GETSTATIC, <span class="string">&quot;java/lang/System&quot;</span>, <span class="string">&quot;out&quot;</span>, <span class="string">&quot;Ljava/io/PrintStream;&quot;</span>); <span class="comment">// System.out</span></span><br><span class="line">mv.visitLdcInsn(<span class="string">&quot;%.5f&quot;</span>); <span class="comment">// printf的第一个参数</span></span><br><span class="line">mv.visitInsn(ICONST_1); <span class="comment">// Object[]的长度</span></span><br><span class="line">mv.visitTypeInsn(ANEWARRAY, <span class="string">&quot;java/lang/Object&quot;</span>); <span class="comment">// 创建Object[]</span></span><br><span class="line">mv.visitInsn(DUP); <span class="comment">// 复制一份数组，一份用于放入对象，一份用于传入方法</span></span><br><span class="line">mv.visitInsn(ICONST_0); <span class="comment">// 放入数组的位置，0</span></span><br><span class="line">mv.visitVarInsn(DLOAD, <span class="number">1</span>); <span class="comment">// 取出a</span></span><br><span class="line">mv.visitVarInsn(DLOAD, <span class="number">3</span>); <span class="comment">// 取出b（3是因为double要占两个局部变量槽位！）</span></span><br><span class="line">mv.visitInsn(DMUL); <span class="comment">// 计算 a * b</span></span><br><span class="line">mv.visitMethodInsn(INVOKESTATIC, <span class="string">&quot;java/lang/Double&quot;</span>, <span class="string">&quot;valueOf&quot;</span>, <span class="string">&quot;(D)Ljava/lang/Double;&quot;</span>, <span class="keyword">false</span>); <span class="comment">// 装箱</span></span><br><span class="line">mv.visitInsn(AASTORE); <span class="comment">// 放入数组</span></span><br><span class="line">mv.visitMethodInsn(INVOKEVIRTUAL, <span class="string">&quot;java/io/PrintStream&quot;</span>, <span class="string">&quot;printf&quot;</span>, <span class="string">&quot;(Ljava/lang/String;[Ljava/lang/Object;)Ljava/io/PrintStream;&quot;</span>, <span class="keyword">false</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>); <span class="hljs-comment">// System.out</span>
+mv.visitLdcInsn(<span class="hljs-string">&quot;%.5f&quot;</span>); <span class="hljs-comment">// printf的第一个参数</span>
+mv.visitInsn(ICONST_1); <span class="hljs-comment">// Object[]的长度</span>
+mv.visitTypeInsn(ANEWARRAY, <span class="hljs-string">&quot;java/lang/Object&quot;</span>); <span class="hljs-comment">// 创建Object[]</span>
+mv.visitInsn(DUP); <span class="hljs-comment">// 复制一份数组，一份用于放入对象，一份用于传入方法</span>
+mv.visitInsn(ICONST_0); <span class="hljs-comment">// 放入数组的位置，0</span>
+mv.visitVarInsn(DLOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// 取出a</span>
+mv.visitVarInsn(DLOAD, <span class="hljs-number">3</span>); <span class="hljs-comment">// 取出b（3是因为double要占两个局部变量槽位！）</span>
+mv.visitInsn(DMUL); <span class="hljs-comment">// 计算 a * b</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/Double&quot;</span>, <span class="hljs-string">&quot;valueOf&quot;</span>, <span class="hljs-string">&quot;(D)Ljava/lang/Double;&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 装箱</span>
+mv.visitInsn(AASTORE); <span class="hljs-comment">// 放入数组</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;printf&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;[Ljava/lang/Object;)Ljava/io/PrintStream;&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
 
 <p>最后写入return和visitMaxs，局部变量一共5个槽位，最大的操作栈大小是9：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mv.visitInsn(RETURN);</span><br><span class="line">mv.visitMaxs(<span class="number">9</span>, <span class="number">5</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">9</span>, <span class="hljs-number">5</span>);</code></pre>
 
 <p>下面就可以实验了！</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">3.22 6.11</span><br><span class="line">19.67420</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs plaintext">3.22 6.11
+19.67420</code></pre>
 
 <p>测试结果和预测一样！</p>
 <p>全部代码：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/NXDfFpQ4y6/">https://paste.ubuntu.com/p/NXDfFpQ4y6/</a></p>
+<hr>
 <p>这篇专栏的内容结束了，下一篇：Java ASM详解：MethodVisitor与Opcode（三）标签，选择结构，循环结构，栈帧</p>
 <p>这篇文章一共讲了34个字节码，从开始到现在一共讲了164个。</p>
 <p>有错误在评论中指出。</p>
-</div></article></div><div id="disqus_thread"></div></div><script>var disqus_shortname = 'Nickid2018';
-var disqus_identifier = '2021/10/05/Java-ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步/';
-var disqus_title = 'Java ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步';
-var disqus_url = 'http://Nickid2018.github.io/2021/10/05/Java-ASM详解：MethodVisitor和Opcode（二）类型、数组、字段、方法、异常与同步/';
-(function() {
-    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-})();</script><script id="dsq-count-scr" src="//Nickid2018.disqus.com/count.js" async></script></main><footer class="footer-container"><div class="paginator"><a href="/2021/08/08/JEP-412-Foreign-Function-Memory-FFM-API-%E5%A4%96%E9%83%A8%E5%87%BD%E6%95%B0%E4%B8%8E%E5%86%85%E5%AD%98API/" class="next">NEXT</a></div><div class="copyright"><p>© 2021 <a href="http://Nickid2018.github.io">Nickid2018</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and <a href="https://github.com/AngryPowman/hexo-theme-prontera" target="_blank">hexo-theme-prontera</a>.</p></div></footer></body></html>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2021/08/08/JEP-412-Foreign-Function-Memory-FFM-API-%E5%A4%96%E9%83%A8%E5%87%BD%E6%95%B0%E4%B8%8E%E5%86%85%E5%AD%98API/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">JEP 412 Foreign Function &amp; Memory (FFM) API 外部函数与内存API</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+
+  
+  
+    <div class="disqus-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <p id="disqus_error" class="disqus-error" style="display: none;">如果你看不到评论，那么就真的看不到评论 w(゜Д゜)w</p>
+      <div id="disqus_thread" class="disqus-thread"></div>
+    </div>
+    <script type="text/javascript">
+      (function() {
+        var d = document, s = d.createElement('script'), c = d.querySelector(".disqus-container");
+        if (!c) return;
+        s.src = 'https://https://disqus.com/Nickid2018.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        s.onerror = () => {
+          document.querySelector("#disqus_error").style.display = "block";
+        }
+        (d.head || d.body).appendChild(s);
+      })();
+    </script>
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>5</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%89%E5%85%B3%E4%BA%8E%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81"><span class="toc-number">1.</span> <span class="toc-text">有关于类型的字节码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#new"><span class="toc-number">1.1.</span> <span class="toc-text">new</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#instanceof"><span class="toc-number">1.2.</span> <span class="toc-text">instanceof</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#checkcast"><span class="toc-number">1.3.</span> <span class="toc-text">checkcast</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E7%BB%84%E6%93%8D%E4%BD%9C%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81"><span class="toc-number">2.</span> <span class="toc-text">数组操作的字节码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#newarray"><span class="toc-number">2.1.</span> <span class="toc-text">newarray</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#anewarray"><span class="toc-number">2.2.</span> <span class="toc-text">anewarray</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#multianewarray"><span class="toc-number">2.3.</span> <span class="toc-text">multianewarray</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#arraylength"><span class="toc-number">2.4.</span> <span class="toc-text">arraylength</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#xaload"><span class="toc-number">2.5.</span> <span class="toc-text">xaload</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#xastore"><span class="toc-number">2.6.</span> <span class="toc-text">xastore</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E5%AD%97%E6%AE%B5%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81"><span class="toc-number">3.</span> <span class="toc-text">操作字段的字节码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#getfield"><span class="toc-number">3.1.</span> <span class="toc-text">getfield</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#getstatic"><span class="toc-number">3.2.</span> <span class="toc-text">getstatic</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#putfield"><span class="toc-number">3.3.</span> <span class="toc-text">putfield</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#putstatic"><span class="toc-number">3.4.</span> <span class="toc-text">putstatic</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B0%83%E7%94%A8%E6%96%B9%E6%B3%95%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81"><span class="toc-number">4.</span> <span class="toc-text">调用方法的字节码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#invokevirtual"><span class="toc-number">4.1.</span> <span class="toc-text">invokevirtual</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#invokespecial"><span class="toc-number">4.2.</span> <span class="toc-text">invokespecial</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#invokestatic"><span class="toc-number">4.3.</span> <span class="toc-text">invokestatic</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#invokeinterface"><span class="toc-number">4.4.</span> <span class="toc-text">invokeinterface</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%9B%E5%87%BA%E5%BC%82%E5%B8%B8%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81%EF%BC%9Aathrow"><span class="toc-number">5.</span> <span class="toc-text">抛出异常的字节码：athrow</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%8C%E6%AD%A5%E5%AD%97%E8%8A%82%E7%A0%81"><span class="toc-number">6.</span> <span class="toc-text">同步字节码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%EF%BC%9A%E8%AE%A1%E7%AE%97%E4%B8%A4%E6%95%B0%E4%B9%8B%E7%A7%AF"><span class="toc-number">7.</span> <span class="toc-text">应用：计算两数之积</span></a></li></ol>
+  </div>
+</section>
+
+
+      
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (5)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2021 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>

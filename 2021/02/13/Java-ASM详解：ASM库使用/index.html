@@ -1,15 +1,159 @@
-<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><title> Java ASM详解：ASM库使用 · Nickid2018的博客</title><meta name="description" content="Java ASM详解：ASM库使用 - Nickid2018"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="/images/favicon.ico"><link rel="stylesheet" href="/css/prontera.css"><link rel="search" type="application/opensearchdescription+xml" href="http://Nickid2018.github.io/atom.xml" title="Nickid2018的博客"><!-- ------><script src="/script/headLinkSubmit.js"></script><script src="/script/headCount.js"></script><meta name="generator" content="Hexo 5.4.0"><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
-</head><body><header class="feature-header"><nav class="component-nav"><ul><div class="logo-container"><a href="/"><h2 class="title">Nickid2018的博客</h2></a></div><a href="/" target="_self" class="li component-nav-item"><p>INDEX</p></a><a href="/archives" target="_self" class="li component-nav-item"><p>ARCHIVES</p></a><ul class="shortcut-icons"><a href="https://github.com/Nickid2018" target="_blank"><img src="/images/github.svg" class="icon"></a></ul></ul></nav></header><main class="container"><div id="post-container"><div class="post"><article class="post-block"><h1 class="post-title">Java ASM详解：ASM库使用</h1><div class="post-info">Feb 13, 2021</div><div class="post-content"><p>几个月之后，终于来到了ASM的第二篇专栏（指直接咕了半年）</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  <title>Java ASM详解：ASM库使用 | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.jpg)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：ASM库使用</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2021-02-13T00:00:00.000Z" itemprop="datePublished">2021-02-13</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>几个月之后，终于来到了ASM的第二篇专栏（指直接咕了半年）</p>
 <p>这篇专栏主要说一说ASM库怎么用，电脑端观看更佳。</p>
-<h1 id="一-读取的起源：ClassReader"><a href="#一-读取的起源：ClassReader" class="headerlink" title="一.读取的起源：ClassReader"></a>一.读取的起源：ClassReader</h1><p>ClassReader位于<code>org.objectweb.asm</code>包下（基础类都在这个包），它是读取字节码的开始，通过它我们才能进行字节码解析。</p>
+<h2 id="读取的起源：ClassReader"><a href="#读取的起源：ClassReader" class="headerlink" title="读取的起源：ClassReader"></a>读取的起源：ClassReader</h2><p>ClassReader位于<code>org.objectweb.asm</code>包下（基础类都在这个包），它是读取字节码的开始，通过它我们才能进行字节码解析。</p>
 <p>首先是构造函数：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassReader</span><span class="params">(<span class="keyword">byte</span>[] classFile)</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassReader</span><span class="params">(<span class="keyword">byte</span>[] classFileBuffer, <span class="keyword">int</span> classFileOffset, <span class="keyword">int</span> classFileLength)</span></span></span><br><span class="line"><span class="function"><span class="title">ClassReader</span><span class="params">(<span class="keyword">byte</span>[] classFileBuffer, <span class="keyword">int</span> classFileOffset, <span class="keyword">boolean</span> checkClassVersion)</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassReader</span><span class="params">(InputStream inputStream)</span> <span class="keyword">throws</span> IOException</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassReader</span><span class="params">(String className)</span> <span class="keyword">throws</span> IOException</span></span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassReader</span><span class="hljs-params">(<span class="hljs-keyword">byte</span>[] classFile)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassReader</span><span class="hljs-params">(<span class="hljs-keyword">byte</span>[] classFileBuffer, <span class="hljs-keyword">int</span> classFileOffset, <span class="hljs-keyword">int</span> classFileLength)</span></span>
+<span class="hljs-function"><span class="hljs-title">ClassReader</span><span class="hljs-params">(<span class="hljs-keyword">byte</span>[] classFileBuffer, <span class="hljs-keyword">int</span> classFileOffset, <span class="hljs-keyword">boolean</span> checkClassVersion)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassReader</span><span class="hljs-params">(InputStream inputStream)</span> <span class="hljs-keyword">throws</span> IOException</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassReader</span><span class="hljs-params">(String className)</span> <span class="hljs-keyword">throws</span> IOException</span></code></pre>
 
 <p>这几种构造函数都是以传入数据为目标的：前两个，根据传入的byte数组（第二个指定了偏移量和长度）解析类；倒数第二个，通过<code>InputStream</code>传入；倒数第一个，根据类的全限定名获得对象；中间的则是不开放的API，可以忽略。下面是使用的例子：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ClassReader reader = <span class="keyword">new</span> ClassReader(<span class="string">&quot;com/github/nickid2018/asm/TestClass&quot;</span>);</span><br><span class="line">ClassReader reader2 = <span class="keyword">new</span> ClassReader(classBytes, <span class="number">0</span>, <span class="number">3370</span>);</span><br><span class="line">ClassReader reader3 = <span class="keyword">new</span> ClassReader(inputStreamClassFile);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassReader reader = <span class="hljs-keyword">new</span> ClassReader(<span class="hljs-string">&quot;com/github/nickid2018/asm/TestClass&quot;</span>);
+ClassReader reader2 = <span class="hljs-keyword">new</span> ClassReader(classBytes, <span class="hljs-number">0</span>, <span class="hljs-number">3370</span>);
+ClassReader reader3 = <span class="hljs-keyword">new</span> ClassReader(inputStreamClassFile);</code></pre>
 
 <p>说完了对象的构建，下面是它的用法。它最重要的方法是<code>accept</code>，其余的方法基本用不上（都内部自己用的）</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">accept</span><span class="params">(ClassVisitor classVisitor, <span class="keyword">int</span> parsingOptions)</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">accept</span><span class="params">(ClassVisitor classVisitor, Attribute[] attributePrototypes, <span class="keyword">int</span> parsingOptions)</span></span></span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">accept</span><span class="hljs-params">(ClassVisitor classVisitor, <span class="hljs-keyword">int</span> parsingOptions)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">accept</span><span class="hljs-params">(ClassVisitor classVisitor, Attribute[] attributePrototypes, <span class="hljs-keyword">int</span> parsingOptions)</span></span></code></pre>
 
 <p>先抛开<code>Attribute[]</code>这个参数，这个以后可能会说。第一个参数ClassVisitor是你要传入的访问器：ASM整体是<strong>Visitor设计模式</strong>。最后一个参数int是代表读取模式，它有4个基本取值，这些值可以被or（|）连接：</p>
 <table>
@@ -37,10 +181,12 @@
 </tr>
 </tbody></table>
 <p>下面是例子：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ClassVisitor cv = ...;</span><br><span class="line">classReader.accept(cv, <span class="number">0</span>);</span><br><span class="line">classReader.accept(cv, ClassWriter.SKIP_CODE);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassVisitor cv = ...;
+classReader.accept(cv, <span class="hljs-number">0</span>);
+classReader.accept(cv, ClassWriter.SKIP_CODE);</code></pre>
 
 <p>关于ClassReader的使用到这里差不多结束了，下面先讲一下访问标志，然后再说ClassVisitor等类。</p>
-<h1 id="二-访问标志（Access-Flag）"><a href="#二-访问标志（Access-Flag）" class="headerlink" title="二.访问标志（Access Flag）"></a>二.访问标志（Access Flag）</h1><p>访问标志是用于JVM访问类、字段、方法检查和调用的一个int。这些标志既包含了我们常见的public这种访问限定符，还包含了static、final这种修饰符，除此之外还有声明类为接口的interface，为枚举的enum。</p>
+<h2 id="访问标志（Access-Flag）"><a href="#访问标志（Access-Flag）" class="headerlink" title="访问标志（Access Flag）"></a>访问标志（Access Flag）</h2><p>访问标志是用于JVM访问类、字段、方法检查和调用的一个int。这些标志既包含了我们常见的public这种访问限定符，还包含了static、final这种修饰符，除此之外还有声明类为接口的interface，为枚举的enum。</p>
 <p>完整的访问标志如下表（省略了前缀ACC_）：</p>
 <table>
 <thead>
@@ -214,12 +360,18 @@
 <td align="left">弃用，要和@Deprecated连用</td>
 </tr>
 </tbody></table>
-<p>这些常量可以用or叠加修饰，如果访问标志不合法（比如吧ACC_PUBLIC和ACC_PRIVATE用or联系起来当了访问标志），在ASM写入时是不会报错的，但是在JVM试图加载这个类的时候可能会抛出ClassFormatError。</p>
-<h1 id="三-解析类的信息：ClassVisitor"><a href="#三-解析类的信息：ClassVisitor" class="headerlink" title="三.解析类的信息：ClassVisitor"></a>三.解析类的信息：ClassVisitor</h1><p>ClassVisitor是一个抽象类，它的构造函数仅需要ASM API版本（在<code>Opcodes</code>中可以找到，1-9），或者再加上另一个ClassVisitor用于一起解析，下面是一个模板：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassParser</span><span class="params">(<span class="keyword">int</span> api)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">super</span>(api);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassParser</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="keyword">super</span>(ASM9);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这些常量可以用or叠加修饰，如果访问标志不合法（比如吧ACC_PUBLIC和ACC_PRIVATE用or联系起来当了访问标志），在ASM写入时是不会报错的，但是在JVM试图加载这个类的时候可能会抛出<code>ClassFormatError</code>。</p>
+<h2 id="解析类的信息：ClassVisitor"><a href="#解析类的信息：ClassVisitor" class="headerlink" title="解析类的信息：ClassVisitor"></a>解析类的信息：ClassVisitor</h2><p>ClassVisitor是一个抽象类，它的构造函数仅需要ASM API版本（在<code>Opcodes</code>中可以找到，1-9），或者再加上另一个ClassVisitor用于一起解析，下面是一个模板：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassParser</span><span class="hljs-params">(<span class="hljs-keyword">int</span> api)</span> </span>&#123;
+	<span class="hljs-keyword">super</span>(api);
+&#125;
+
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassParser</span><span class="hljs-params">()</span> </span>&#123;
+	<span class="hljs-keyword">super</span>(ASM9);
+&#125;</code></pre>
 
 <p>当这个Visitor被传入accept之后，ClassReader会以下面的顺序调用：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">visit [ visitSource ] [ visitModule ][ visitNestHost ][ visitPermittedSubclass ][ visitOuterClass ] ( visitAnnotation | visitTypeAnnotation | visitAttribute )* ( visitNestMember | visitInnerClass | visitRecordComponent | visitField | visitMethod )* visitEnd</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs plaintext">visit [ visitSource ] [ visitModule ][ visitNestHost ][ visitPermittedSubclass ][ visitOuterClass ] ( visitAnnotation | visitTypeAnnotation | visitAttribute )* ( visitNestMember | visitInnerClass | visitRecordComponent | visitField | visitMethod )* visitEnd</code></pre>
 
 <p>不够清晰？那么下面简单说一下流程：</p>
 <p>首先访问<strong>类的信息</strong>（<code>visit</code>），传入的是<strong>类文件的版本</strong>（version，从V1_1到V16）、<strong>访问标志</strong>（access），<strong>类的全限定名</strong>（name），<strong>泛型签名</strong>（signature，可能为空），<strong>父类全限定名</strong>（无指定为java/lang/Object），<strong>实现接口列表</strong>（全限定名，可为空）</p>
@@ -231,113 +383,433 @@
 <p>内部类调用<code>visitInnerClass</code>方法，传入<strong>内部类全限定名，外部类全限定名，内部类名称</strong>（不带包路径，也就是没有“.”的名称，如果这个写错了IDE无法识别到这个类，但是不影响调用）<strong>，和访问标志</strong>（这个和类声明定义的标志不同，可以有static，这样类里面就不会带有this$0）。内部类调用指的不只是类中定义了内部类，还包括引用到了其他类的内部类。</p>
 <p>当所有信息都访问结束，调用<code>visitEnd</code>。</p>
 <p>这里的内容只是简单介绍了一下，具体的下文和接下来几篇专栏会写。</p>
-<h1 id="四-解析注释信息：AnnotationVisitor"><a href="#四-解析注释信息：AnnotationVisitor" class="headerlink" title="四.解析注释信息：AnnotationVisitor"></a>四.解析注释信息：AnnotationVisitor</h1><p>AnnotationVisitor用于解析注释信息，除了最后会调用的<code>visitEnd</code>外，其他都与注释类型本身定义的方法返回值有关。下面是不同的类型：</p>
+<h2 id="解析注释信息：AnnotationVisitor"><a href="#解析注释信息：AnnotationVisitor" class="headerlink" title="解析注释信息：AnnotationVisitor"></a>解析注释信息：AnnotationVisitor</h2><p>AnnotationVisitor用于解析注释信息，除了最后会调用的<code>visitEnd</code>外，其他都与注释类型本身定义的方法返回值有关。下面是不同的类型：</p>
 <p><code>visit</code>方法：传入注释方法名称和值，值必须是基本类型（基本数字、char及其数组，String和类）</p>
 <p><code>visitArray</code>方法：传入注释方法名称，返回另一个AnnotationVisitor。这个新的Visitor会被传入数组内的值，所有的name传入都为null。注意：visit一个基本数字或char数组等价于使用visitArray，但是在ClassReader解析中不会调用visitArray而是直接调用visit。</p>
 <p><code>visitAnnotation</code>方法：传入注释方法名称和值的描述符，返回的是值的AnnotationVisitor。</p>
 <p><code>visitEnum</code>方法：传入注释方法名、值的描述符和枚举名称。</p>
 <p>对于带有<code>@Repeatable</code>注释的注释类型，在Java使用反射时会返回容器注释，也就是在普通编写时有两种等价的编写方式。在ASM中，这两种方式也等价，写入按照第一种处理：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@T</span>.Ts(value = &#123; <span class="meta">@T(value = &quot;ss&quot;)</span>, <span class="meta">@T(value = &quot;dd&quot;)</span> &#125;)</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">A</span> </span>&#123; ... &#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@T(value = &quot;ss&quot;)</span></span><br><span class="line"><span class="meta">@T(value = &quot;dd&quot;)</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">A</span> </span>&#123; ... &#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-meta">@T</span>.Ts(value = &#123; <span class="hljs-meta">@T(value = &quot;ss&quot;)</span>, <span class="hljs-meta">@T(value = &quot;dd&quot;)</span> &#125;)
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">A</span> </span>&#123; ... &#125;
+
+<span class="hljs-meta">@T(value = &quot;ss&quot;)</span>
+<span class="hljs-meta">@T(value = &quot;dd&quot;)</span>
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">A</span> </span>&#123; ... &#125;</code></pre>
 
 <blockquote>
 <p>对于带有@Repeatable注释的注释类型，这两种使用方式在反射和ASM中完全等价（T.Ts是T的注释容器）</p>
 </blockquote>
-<h1 id="五-解析字段：FieldVisitor"><a href="#五-解析字段：FieldVisitor" class="headerlink" title="五.解析字段：FieldVisitor"></a>五.解析字段：FieldVisitor</h1><p>FieldVisitor的构成比较简单，除了<code>visitEnd</code>在最后调用外，比较常用的就是<code>visitAnnotation</code>和<code>visitTypeAnnotation</code>。这些方法的使用都和ClassVisitor的使用差不多，唯一的不同是visitTypeAnnotation的注释引用类型必为<code>FIELD</code>（常量值19）</p>
+<h2 id="解析字段：FieldVisitor"><a href="#解析字段：FieldVisitor" class="headerlink" title="解析字段：FieldVisitor"></a>解析字段：FieldVisitor</h2><p>FieldVisitor的构成比较简单，除了<code>visitEnd</code>在最后调用外，比较常用的就是<code>visitAnnotation</code>和<code>visitTypeAnnotation</code>。这些方法的使用都和ClassVisitor的使用差不多，唯一的不同是visitTypeAnnotation的注释引用类型必为<code>FIELD</code>（常量值19）</p>
 <p>到此简单的解析就讲完了。什么？还差一个MethodVisitor？这是我们之后要说的重要内容，所以这里不会提到它。接下来，是应用ASM的例子。</p>
-<h1 id="六-使用范例：解析一个类"><a href="#六-使用范例：解析一个类" class="headerlink" title="六.使用范例：解析一个类"></a>六.使用范例：解析一个类</h1><p>解析一个类需要从文章最开始说的ClassReader写起，它能将一个类的字节码解析并且进行Visitor模式调用。在下面的范例中，我们将尝试读取一个类的名称、字段和注释。</p>
+<h2 id="使用范例：解析一个类"><a href="#使用范例：解析一个类" class="headerlink" title="使用范例：解析一个类"></a>使用范例：解析一个类</h2><p>解析一个类需要从文章最开始说的ClassReader写起，它能将一个类的字节码解析并且进行Visitor模式调用。在下面的范例中，我们将尝试读取一个类的名称、字段和注释。</p>
 <p>首先是一个测试类的编写，之后用javac编译。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.github.nickid2018.asm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestClass</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Deprecated</span></span><br><span class="line">	<span class="keyword">public</span> String string;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> integer;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">package</span> com.github.nickid2018.asm;
+
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">TestClass</span> </span>&#123;
+
+	<span class="hljs-meta">@Deprecated</span>
+	<span class="hljs-keyword">public</span> String string;
+	<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> integer;
+&#125;</code></pre>
 
 <p>接着，我们尝试读取这个类的信息，因为测试类和运行ASM的类在同一个项目之下，可以用它的全限定名初始化ClassReader。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ClassReader reader = <span class="keyword">new</span> ClassReader(<span class="string">&quot;com/github/nickid2018/asm/TestClass&quot;</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassReader reader = <span class="hljs-keyword">new</span> ClassReader(<span class="hljs-string">&quot;com/github/nickid2018/asm/TestClass&quot;</span>);</code></pre>
 
 <p>之后我们需要继承三个Visitor：ClassVisitor、FieldVisitor和AnnotationVisitor。我们只需要一些信息，所以不需要将它们的所有方法进行覆盖。</p>
 <p>创建一个ClassParser继承ClassVisitor，选择要覆盖的方法。在访问类的时候，我们只需要类名，所以需要覆盖visit；又因为需要解析字段，我们还需要覆盖visitField，并且将我们的字段访问器作为返回值。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">visit</span><span class="params">(<span class="keyword">int</span> version, <span class="keyword">int</span> access, String name, String signature, String superName, String[] interfaces)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">super</span>(version, access, name, signature, superName, interfaces);</span><br><span class="line">	System.out.println(<span class="string">&quot;类名: &quot;</span> + name);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> FieldVisitor <span class="title">visitField</span><span class="params">(<span class="keyword">int</span> access, String name, String descriptor, String signature, Object value)</span> </span>&#123;</span><br><span class="line">	System.out.println(<span class="string">&quot;字段: &quot;</span> + name + <span class="string">&quot; 描述符: &quot;</span> + descriptor);</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> FieldParser();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-meta">@Override</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">visit</span><span class="hljs-params">(<span class="hljs-keyword">int</span> version, <span class="hljs-keyword">int</span> access, String name, String signature, String superName, String[] interfaces)</span> </span>&#123;
+	<span class="hljs-keyword">super</span>(version, access, name, signature, superName, interfaces);
+	System.out.println(<span class="hljs-string">&quot;类名: &quot;</span> + name);
+&#125;
+
+<span class="hljs-meta">@Override</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> FieldVisitor <span class="hljs-title">visitField</span><span class="hljs-params">(<span class="hljs-keyword">int</span> access, String name, String descriptor, String signature, Object value)</span> </span>&#123;
+	System.out.println(<span class="hljs-string">&quot;字段: &quot;</span> + name + <span class="hljs-string">&quot; 描述符: &quot;</span> + descriptor);
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> FieldParser();
+&#125;</code></pre>
 
 <p>创建FieldParser继承FieldVisitor解析字段。在读取字段时，我们还需要读取字段中的注释，所以需要覆盖visitAnnotation，返回我们自己的AnnotationVisitor。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> AnnotationVisitor <span class="title">visitAnnotation</span><span class="params">(String descriptor, <span class="keyword">boolean</span> visible)</span> </span>&#123;</span><br><span class="line">	System.out.println(<span class="string">&quot;注释: &quot;</span> + descriptor + <span class="string">&quot; 可见性: &quot;</span> + visible);</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">new</span> AnnotationParser();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-meta">@Override</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> AnnotationVisitor <span class="hljs-title">visitAnnotation</span><span class="hljs-params">(String descriptor, <span class="hljs-keyword">boolean</span> visible)</span> </span>&#123;
+	System.out.println(<span class="hljs-string">&quot;注释: &quot;</span> + descriptor + <span class="hljs-string">&quot; 可见性: &quot;</span> + visible);
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> AnnotationParser();
+&#125;</code></pre>
 
 <p>由于@Deprecated不具有任何的注释方法，我们创建的AnnotationParser可以不覆盖任何方法。</p>
 <p>这些访问器写完之后，就要递呈给ClassReader开始解析，代码如下：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ClassParser cv = <span class="keyword">new</span> ClassParser();</span><br><span class="line">reader.accept(cv, <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassParser cv = <span class="hljs-keyword">new</span> ClassParser();
+reader.accept(cv, <span class="hljs-number">0</span>);</code></pre>
 
 <p>现在，我们的解析程序就完成了。运行结果如下：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">类名: com/github/nickid2018/asm/TestClass</span><br><span class="line">字段: string 描述符: Ljava/lang/String;</span><br><span class="line">注释: Ljava/lang/Deprecated; 可见性: true</span><br><span class="line">字段: integer 描述符: I</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs plaintext">类名: com/github/nickid2018/asm/TestClass
+字段: string 描述符: Ljava/lang/String;
+注释: Ljava/lang/Deprecated; 可见性: true
+字段: integer 描述符: I</code></pre>
 
 <p>代码样例：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/8d6jN8jVzr/">https://paste.ubuntu.com/p/8d6jN8jVzr/</a></p>
-<h1 id="七-使用范例：生成一个类"><a href="#七-使用范例：生成一个类" class="headerlink" title="七.使用范例：生成一个类"></a>七.使用范例：生成一个类</h1><p>生成类我们用到的是ClassWriter，它本质上就是ClassVisitor，我们只要用可以构建类的数据按照刚才的格式传给它就能生成对应的类。</p>
+<h2 id="使用范例：生成一个类"><a href="#使用范例：生成一个类" class="headerlink" title="使用范例：生成一个类"></a>使用范例：生成一个类</h2><p>生成类我们用到的是ClassWriter，它本质上就是ClassVisitor，我们只要用可以构建类的数据按照刚才的格式传给它就能生成对应的类。</p>
 <p>它的构造函数有两个，一个只传入一个int，它的值可为三个数：0、COMPUTE_MAXS和COMPUTE_FRAMES。那两个常量值是自动计算方法visitMaxs和visitFrame的，对于现在来说还用不到。另一个构造函数还需要传入ClassReader，这是下一部分可能用到的。</p>
 <p>首先确定我们要构建产生的类：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.github.nickid2018.asm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WillGenerate</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Deprecated</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> HELLO = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">private</span> String hi;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">package</span> com.github.nickid2018.asm;
+
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WillGenerate</span> </span>&#123;
+
+	<span class="hljs-meta">@Deprecated</span>
+	<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">int</span> HELLO = <span class="hljs-number">0</span>;
+	<span class="hljs-keyword">private</span> String hi;
+&#125;</code></pre>
 
 <p>首先创建ClassWriter实例：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ClassWriter cw = <span class="keyword">new</span> ClassWriter(<span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassWriter cw = <span class="hljs-keyword">new</span> ClassWriter(<span class="hljs-number">0</span>);</code></pre>
 
 <p>接着，创建类，用到的正是visit方法。由于没有指定父类，这个类的父类将被强行指定为java/lang/Object，接口、抽象类、注释类型也如此。这个类没有实现任何接口，所以interfaces可以传null。同理，它没有泛型，所以泛型的signature为null。访问标志是public，再加上super，整体下来就是这句：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, <span class="string">&quot;com/github/nickid2018/asm/WillGenerate&quot;</span>, <span class="keyword">null</span>, <span class="string">&quot;java/lang/Object&quot;</span>,<span class="keyword">null</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, <span class="hljs-string">&quot;com/github/nickid2018/asm/WillGenerate&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;java/lang/Object&quot;</span>,<span class="hljs-keyword">null</span>);</code></pre>
 
 <p>接下来我们需要创建默认构造函数。javac编译时会把没有定义构造函数的普通类加入默认的构造函数。这种构造函数里面包括了父类构造函数调用和本身的非基本类型字段赋值。如果没有非基本类型字段赋值，那么它的代码就像这样：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">WillGenerate</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="keyword">super</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">WillGenerate</span><span class="hljs-params">()</span> </span>&#123;
+	<span class="hljs-keyword">super</span>();
+&#125;</code></pre>
 
 <p>由于这篇专栏主要是有关于类、字段、注释的解析，方法的解析暂时先不讲，所以这里只给出它的写入代码，不做讲解。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">writeDefaultInit</span><span class="params">(ClassWriter cw)</span> </span>&#123;</span><br><span class="line">	MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;()V&quot;</span>, <span class="keyword">null</span>, <span class="keyword">null</span>);</span><br><span class="line">	mv.visitVarInsn(ALOAD, <span class="number">0</span>);</span><br><span class="line">	mv.visitMethodInsn(INVOKESPECIAL, <span class="string">&quot;java/lang/Object&quot;</span>, <span class="string">&quot;&lt;init&gt;&quot;</span>, <span class="string">&quot;()V&quot;</span>, <span class="keyword">false</span>);</span><br><span class="line">	mv.visitInsn(RETURN);</span><br><span class="line">	mv.visitMaxs(<span class="number">1</span>, <span class="number">1</span>);</span><br><span class="line">	mv.visitEnd();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">writeDefaultInit</span><span class="hljs-params">(ClassWriter cw)</span> </span>&#123;
+	MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+	mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+	mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/Object&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>);
+	mv.visitInsn(RETURN);
+	mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>);
+	mv.visitEnd();
+&#125;</code></pre>
 
 <p>接下来写入HELLO这个字段。它的访问标志是public+static+final，由于它是弃用的，它也可以加上deprecated这个ASM自己定义的Access Flag。它的类型是int，所以描述符是I。没有泛型，所以signature为null。有默认值，为0。所以它的写入像这样：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">FieldVisitor fv = cw.visitField(ACC_PUBLIC + ACC_FINAL + ACC_STATIC + ACC_DEPRECATED, <span class="string">&quot;HELLO&quot;</span>, <span class="string">&quot;I&quot;</span>, <span class="keyword">null</span>, (Integer) <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">FieldVisitor fv = cw.visitField(ACC_PUBLIC + ACC_FINAL + ACC_STATIC + ACC_DEPRECATED, <span class="hljs-string">&quot;HELLO&quot;</span>, <span class="hljs-string">&quot;I&quot;</span>, <span class="hljs-keyword">null</span>, (Integer) <span class="hljs-number">0</span>);</code></pre>
 
 <p>保留这个FieldVisitor，因为它还具有一个注释@Deprecated。注释类型的描述符为Ljava/lang/Deprecated;。又因为@Deprecated的作用范围是RUNTIME，所以可见性为true，代码如下：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">AnnotationVisitor av = fv.visitAnnotation(<span class="string">&quot;Ljava/lang/Deprecated;&quot;</span>, <span class="keyword">true</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">AnnotationVisitor av = fv.visitAnnotation(<span class="hljs-string">&quot;Ljava/lang/Deprecated;&quot;</span>, <span class="hljs-keyword">true</span>);</code></pre>
 
 <p>这时，这个字段就写入信息就完成了，调用visitEnd。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">av.visitEnd();</span><br><span class="line">fv.visitEnd();</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">av.visitEnd();
+fv.visitEnd();</code></pre>
 
 <p>下面写hi这个字段，和上面的差不多，直接给代码：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fv = cw.visitField(ACC_PRIVATE, <span class="string">&quot;hi&quot;</span>, <span class="string">&quot;Ljava/lang/String;&quot;</span>, <span class="keyword">null</span>, <span class="keyword">null</span>);</span><br><span class="line">fv.visitEnd();</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">fv = cw.visitField(ACC_PRIVATE, <span class="hljs-string">&quot;hi&quot;</span>, <span class="hljs-string">&quot;Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+fv.visitEnd();</code></pre>
 
 <p>这时候类的所有信息都已经写完了，调用ClassWriter的visitEnd。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cw.visitEnd();</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">cw.visitEnd();</code></pre>
 
 <p>接下来调用ClassWriter的toByteArray获得字节码信息，写入到文件中就能得到类。</p>
 <p>运行之后调用反编译器的结果：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.github.nickid2018.asm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WillGenerate</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Deprecated</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> HELLO = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">private</span> String hi;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">package</span> com.github.nickid2018.asm;
+
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">WillGenerate</span></span>
+<span class="hljs-class"></span>&#123;
+
+	<span class="hljs-meta">@Deprecated</span>
+	<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">int</span> HELLO = <span class="hljs-number">0</span>;
+	<span class="hljs-keyword">private</span> String hi;
+&#125;</code></pre>
 
 <p>代码样例：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/cqfDPVZbsH/">https://paste.ubuntu.com/p/cqfDPVZbsH/</a></p>
-<h1 id="八-使用范例：修改一个类"><a href="#八-使用范例：修改一个类" class="headerlink" title="八.使用范例：修改一个类"></a>八.使用范例：修改一个类</h1><p>修改类需要ClassReader和ClassWriter互相配合。利用ClassVisitor等进行数据的转移和修改。</p>
+<h2 id="使用范例：修改一个类"><a href="#使用范例：修改一个类" class="headerlink" title="使用范例：修改一个类"></a>使用范例：修改一个类</h2><p>修改类需要ClassReader和ClassWriter互相配合。利用ClassVisitor等进行数据的转移和修改。</p>
 <p>接下来用ASM改一下我们的TestClass。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">TestClass</span> </span>&#123;				<span class="comment">// 改为抽象类</span></span><br><span class="line"></span><br><span class="line">	<span class="meta">@Deprecated</span></span><br><span class="line">	<span class="keyword">public</span> String string;               <span class="comment">// 重命名为str</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> integer;			<span class="comment">// 加上final和默认值10</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">TestClass</span> </span>&#123;				<span class="hljs-comment">// 改为抽象类</span>
+
+	<span class="hljs-meta">@Deprecated</span>
+	<span class="hljs-keyword">public</span> String string;               <span class="hljs-comment">// 重命名为str</span>
+	<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> integer;			<span class="hljs-comment">// 加上final和默认值10</span>
+&#125;</code></pre>
 
 <p>首先，创建ClassReader和ClassWriter。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ClassWriter cw = <span class="keyword">new</span> ClassWriter(<span class="number">0</span>);</span><br><span class="line">ClassReader cr  = <span class="keyword">new</span> ClassReader(<span class="string">&quot;com/github/nickid2018/asm/TestClass&quot;</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">ClassWriter cw = <span class="hljs-keyword">new</span> ClassWriter(<span class="hljs-number">0</span>);
+ClassReader cr  = <span class="hljs-keyword">new</span> ClassReader(<span class="hljs-string">&quot;com/github/nickid2018/asm/TestClass&quot;</span>);</code></pre>
 
 <p>之后在我们的ClassParser里面改一下，传入一个ClassWriter，使用父类的第二个构造函数：以int，ClassVisitor为参数的构造函数。这样，ClassReader传入的信息可以直接写到ClassWriter里面，我们只需要修改我们所需要的方法就可以达到修改的效果，而不用将所有ClassVisitor的方法实现。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ClassParser</span><span class="params">(ClassWriter cw)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">super</span>(ASM9, cw);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassParser</span><span class="hljs-params">(ClassWriter cw)</span> </span>&#123;
+	<span class="hljs-keyword">super</span>(ASM9, cw);
+&#125;</code></pre>
 
 <p>接下来解决第一个修改：改为抽象类。这个我们可以在visit里面修改，将原先的访问标志加一个abstract就好。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">visit</span><span class="params">(<span class="keyword">int</span> version, <span class="keyword">int</span> access, String name, String signature, String superName, String[] interfaces)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">super</span>.visit(version, access + ACC_ABSTRACT, name, signature, superName, interfaces);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-meta">@Override</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">visit</span><span class="hljs-params">(<span class="hljs-keyword">int</span> version, <span class="hljs-keyword">int</span> access, String name, String signature, String superName, String[] interfaces)</span> </span>&#123;
+	<span class="hljs-keyword">super</span>.visit(version, access + ACC_ABSTRACT, name, signature, superName, interfaces);
+&#125;</code></pre>
 
 <p>第二个修改是重命名字段。这个在visitField里面判断就行，像下面一样：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (name.equals(<span class="string">&quot;string&quot;</span>))</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">super</span>.visitField(access, <span class="string">&quot;str&quot;</span>, descriptor, signature, value);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">if</span> (name.equals(<span class="hljs-string">&quot;string&quot;</span>))
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">super</span>.visitField(access, <span class="hljs-string">&quot;str&quot;</span>, descriptor, signature, value);</code></pre>
 
 <p>第三个就是修改为final和加默认值，也是在visitField里面改动：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (name.equals(<span class="string">&quot;integer&quot;</span>))</span><br><span class="line">	<span class="keyword">return</span> <span class="keyword">super</span>.visitField(access + ACC_FINAL, name, descriptor, signature, (Integer) <span class="number">10</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">if</span> (name.equals(<span class="hljs-string">&quot;integer&quot;</span>))
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">super</span>.visitField(access + ACC_FINAL, name, descriptor, signature, (Integer) <span class="hljs-number">10</span>);</code></pre>
 
 <p>最后用accept传入ClassParser，输出文件就是改好的类文件。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cr.accept(<span class="keyword">new</span> ClassParser(cw), <span class="number">0</span>);</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java">cr.accept(<span class="hljs-keyword">new</span> ClassParser(cw), <span class="hljs-number">0</span>);</code></pre>
 
 <p>生成之后，用反编译器看一下结果。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.github.nickid2018.asm;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">abstract</span> <span class="class"><span class="keyword">class</span> <span class="title">TestClass</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Deprecated</span></span><br><span class="line">	<span class="keyword">public</span> String str;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> integer = <span class="number">10</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="hljs Java"><span class="hljs-keyword">package</span> com.github.nickid2018.asm;
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">TestClass</span></span>
+<span class="hljs-class"></span>&#123;
+
+	<span class="hljs-meta">@Deprecated</span>
+	<span class="hljs-keyword">public</span> String str;
+	<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">int</span> integer = <span class="hljs-number">10</span>;
+&#125;</code></pre>
 
 <p>代码样例：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/yXVvdJs3WH/">https://paste.ubuntu.com/p/yXVvdJs3WH/</a></p>
+<hr>
 <p>这篇专栏到这里就结束了，下一期专栏：MethodVisitor和Opcode（一）</p>
 <p>如果文章中有任何错误，可以在评论区留言，我将会修正错误。</p>
 <p>如果使用ASM中有问题，可以在下面评论。</p>
-</div></article></div><div id="disqus_thread"></div></div><script>var disqus_shortname = 'Nickid2018';
-var disqus_identifier = '2021/02/13/Java-ASM详解：ASM库使用/';
-var disqus_title = 'Java ASM详解：ASM库使用';
-var disqus_url = 'http://Nickid2018.github.io/2021/02/13/Java-ASM详解：ASM库使用/';
-(function() {
-    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-})();</script><script id="dsq-count-scr" src="//Nickid2018.disqus.com/count.js" async></script></main><footer class="footer-container"><div class="paginator"><a href="/2021/03/07/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/" class="prev">PREV</a></div><div class="copyright"><p>© 2021 <a href="http://Nickid2018.github.io">Nickid2018</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and <a href="https://github.com/AngryPowman/hexo-theme-prontera" target="_blank">hexo-theme-prontera</a>.</p></div></footer></body></html>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2021/04/07/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AMethodVisitor%E4%B8%8EOpcode%EF%BC%88%E4%B8%80%EF%BC%89%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C%E4%B8%8E%E8%BF%90%E7%AE%97/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：MethodVisitor与Opcode（一）基本操作与运算</h2>
+        </a>
+      
+      <div class="card-text--row">Newer</div>
+    </div>
+  </article>
+</div>
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2020/07/23/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解： 基础知识</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+
+  
+  
+    <div class="disqus-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <p id="disqus_error" class="disqus-error" style="display: none;">如果你看不到评论，那么就真的看不到评论 w(゜Д゜)w</p>
+      <div id="disqus_thread" class="disqus-thread"></div>
+    </div>
+    <script type="text/javascript">
+      (function() {
+        var d = document, s = d.createElement('script'), c = d.querySelector(".disqus-container");
+        if (!c) return;
+        s.src = 'https://https://disqus.com/Nickid2018.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        s.onerror = () => {
+          document.querySelector("#disqus_error").style.display = "block";
+        }
+        (d.head || d.body).appendChild(s);
+      })();
+    </script>
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>5</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AF%BB%E5%8F%96%E7%9A%84%E8%B5%B7%E6%BA%90%EF%BC%9AClassReader"><span class="toc-number">1.</span> <span class="toc-text">读取的起源：ClassReader</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E6%A0%87%E5%BF%97%EF%BC%88Access-Flag%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">访问标志（Access Flag）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E7%B1%BB%E7%9A%84%E4%BF%A1%E6%81%AF%EF%BC%9AClassVisitor"><span class="toc-number">3.</span> <span class="toc-text">解析类的信息：ClassVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E6%B3%A8%E9%87%8A%E4%BF%A1%E6%81%AF%EF%BC%9AAnnotationVisitor"><span class="toc-number">4.</span> <span class="toc-text">解析注释信息：AnnotationVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E5%AD%97%E6%AE%B5%EF%BC%9AFieldVisitor"><span class="toc-number">5.</span> <span class="toc-text">解析字段：FieldVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E8%A7%A3%E6%9E%90%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">6.</span> <span class="toc-text">使用范例：解析一个类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E7%94%9F%E6%88%90%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">7.</span> <span class="toc-text">使用范例：生成一个类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E4%BF%AE%E6%94%B9%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">8.</span> <span class="toc-text">使用范例：修改一个类</span></a></li></ol>
+  </div>
+</section>
+
+
+      
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (5)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2021 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>

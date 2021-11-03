@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  <title>Java ASM详解： 基础知识 | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.jpg)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解： 基础知识</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2020-07-23T00:00:00.000Z" itemprop="datePublished">2020-07-23</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <h2 id="ASM是什么，字节码又是什么"><a href="#ASM是什么，字节码又是什么" class="headerlink" title="ASM是什么，字节码又是什么"></a>ASM是什么，字节码又是什么</h2><blockquote>
+<p>ASM是一个Java字节码分析、创建和修改的开源应用框架。它可以动态生成二进制格式的stub类或其他代理类，或者在类被Java虚拟机装入内存之前，动态修改类。在ASM中提供了诸多的API用于对类的内容进行字节码操作的方法。与传统的BCEL和SERL不同，在ASM中提供了更为优雅和灵活的操作字节码的方式</p>
+</blockquote>
+<p>这是ASM官网上给出的<del>没用解释</del>，一句话概括：ASM是一个修改，分析Java类文件的框架。先抛开ASM框架的基本定义，先来看看字节码是什么</p>
+<blockquote>
+<p>字节码（Byte-code）是一种包含执行程序，由一序列 op 代码/数据对组成的二进制文件</p>
+</blockquote>
+<p>又是一段<del>废话</del>。从这里可以的知，字节码是一种介于翻译语言和底层语言的东西，与底层语言（C/C++）相比较你可以从它这里知道程序的运行方式，而与翻译语言（JavaScript）对比来看，你又无法从字节码中轻易看出什么。但是由于字节码的这个特性，我们得以修改它，操纵它，并且我们还可以反编译它。</p>
+<hr>
+<p><img src="/resources/2021030701/asm_picture.jpg" alt="ASM图标"></p>
+<p>官网：<a target="_blank" rel="noopener" href="https://asm.ow2.io/">https://asm.ow2.io/</a></p>
+<h2 id="添加ASM库依赖"><a href="#添加ASM库依赖" class="headerlink" title="添加ASM库依赖"></a>添加ASM库依赖</h2><p>首先，是有关于ASM的Maven依赖</p>
+<pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-all<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>6.0_BETA<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre>
+
+<p>或者</p>
+<pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-commons<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-tree<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-analysis<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
+	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre>
+
+<p>如果使用第一种，那么你最高能依赖的版本是6.0_BETA。而第二种是现在仍在持续更新的，它相当于把原先的asm-all库分开成为不同的部分，但是基本的asm库是必须的。</p>
+<p>这个库以后会详细讲述，这里先说几个强有力的工具。</p>
+<h2 id="帮助学习ASM的工具"><a href="#帮助学习ASM的工具" class="headerlink" title="帮助学习ASM的工具"></a>帮助学习ASM的工具</h2><h3 id="ASMifier-自动生成ASM代码"><a href="#ASMifier-自动生成ASM代码" class="headerlink" title="ASMifier: 自动生成ASM代码"></a>ASMifier: 自动生成ASM代码</h3><p>ASM库中有不少实用类，为了了解晦涩难懂的ASM代码，可以用ASMifier来进行解析。这是一个可执行类，你可以通过java.exe运行它。</p>
+<p><font color="#ff0000">注意：在9.0已经没有这个类了</font></p>
+<p>运行方法：下载ASM的jar（比如asm-all-6.0_beta.jar）或者从你的.m2文件夹（asm-all）里面找到它，然后运行：</p>
+<pre><code class="hljs SH">java -classpath asm-all-6.0_BETA.jar org.objectweb.asm.util.ASMifier DemoDump.class</code></pre>
+
+<p>你会得到这样的输出：</p>
+<p><img src="/resources/2021030701/asmifier_run.png" alt="运行ASMifier的效果"></p>
+<h3 id="javap-exe-Java自带的字节码解析工具"><a href="#javap-exe-Java自带的字节码解析工具" class="headerlink" title="javap.exe: Java自带的字节码解析工具"></a>javap.exe: Java自带的字节码解析工具</h3><p>javap是你在安装JDK时就有的一个程序文件，是JDK的原生字节码解析工具，关于它的使用因篇幅有限不再细说，可以参考这篇文章 <a target="_blank" rel="noopener" href="https://www.cnblogs.com/frinder6/articles/5440173.html">https://www.cnblogs.com/frinder6/articles/5440173.html</a></p>
+<p><img src="/resources/2021030701/javap_run.png" alt="运行javap的效果"></p>
+<h3 id="Eclipse插件-Enhanced-Class-Decompiler"><a href="#Eclipse插件-Enhanced-Class-Decompiler" class="headerlink" title="Eclipse插件: Enhanced Class Decompiler"></a>Eclipse插件: Enhanced Class Decompiler</h3><p>这个插件是反编译器，可以在你没有库的源代码时反编译出源代码进行调试。当然，这个也可以作为你ASM程序的结果测试方案，通常反编译结果会很贴近于源代码，如果相差很大可以换一种方式反编译。</p>
+<hr>
+<h2 id="ASM中经常会用到的名词"><a href="#ASM中经常会用到的名词" class="headerlink" title="ASM中经常会用到的名词"></a>ASM中经常会用到的名词</h2><h3 id="类-型-的不同名称"><a href="#类-型-的不同名称" class="headerlink" title="类(型)的不同名称"></a>类(型)的不同名称</h3><ul>
+<li>类的二进制名称/类全名/简单名称</li>
+</ul>
+<p>这个三个名称是等价的，也就是我们平常说的类名，例如 java.lang.Thread java.lang.Thread$UncaughtExceptionHandler这样的名称。</p>
+<ul>
+<li>全限定名</li>
+</ul>
+<p>这个名称是用于class文件中的名称，其实就是将二进制名称的所有”.”换为”/“，这个名称只有非数组引用类型才有。例如 java/lang/Thread   java/io/IOException。</p>
+<ul>
+<li>类型描述符</li>
+</ul>
+<p>类型描述符是有关于class文件内定义字段等的类型的名称。</p>
+<h3 id="类型描述符"><a href="#类型描述符" class="headerlink" title="类型描述符"></a>类型描述符</h3><ul>
+<li>原始类型的描述符一一对应</li>
+</ul>
+<p>原始类型的描述符都对应相应的一个字母，具体来说是这样的：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">byte</span> -&gt; B
+<span class="hljs-keyword">short</span> -&gt; S
+<span class="hljs-keyword">int</span> -&gt; I
+<span class="hljs-keyword">long</span> -&gt; J
+<span class="hljs-keyword">float</span> -&gt; F
+<span class="hljs-keyword">double</span> -&gt; D
+<span class="hljs-keyword">char</span> -&gt; C
+<span class="hljs-keyword">void</span> -&gt; V
+<span class="hljs-keyword">boolean</span> -&gt; Z</code></pre>
+
+<ul>
+<li><p>非数组的引用类型为 L+全限定名+;</p>
+</li>
+<li><p>数组引用类型为 [+数组内类型的描述符</p>
+</li>
+</ul>
+<p>例子:</p>
+<pre><code class="hljs Java">java.lang.Thread -&gt; Ljava/lang/Thread;
+java.lang.Object[] -&gt; [Ljava/lang/Object;
+<span class="hljs-keyword">int</span>[][] -&gt; [[I</code></pre>
+
+<h3 id="方法描述符"><a href="#方法描述符" class="headerlink" title="方法描述符"></a>方法描述符</h3><p>了解类名称和类型描述符，下面讲一下方法描述符（其实类型描述符和方法描述符统称描述符）</p>
+<p>方法描述符是class文件中保存参数类型列表和返回值类型的方式，在各种方法调用的操作码里面都会涉及到。</p>
+<p>规则：</p>
+<ol>
+<li>格式为 ( + 参数列表 + ) + 返回值</li>
+<li>所有类型名称都为类型描述符</li>
+<li>参数列表中不需要逗号分隔</li>
+</ol>
+<p>下面是抽象含义下的具体例子（省略了参数名称，只保留了参数类型）：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">a</span><span class="hljs-params">(<span class="hljs-keyword">int</span>,<span class="hljs-keyword">int</span>,<span class="hljs-keyword">int</span>)</span> -&gt; <span class="hljs-params">(III)</span>V</span>
+<span class="hljs-function">String <span class="hljs-title">s</span><span class="hljs-params">(<span class="hljs-keyword">double</span>[],<span class="hljs-keyword">boolean</span>)</span> -&gt; <span class="hljs-params">([DZ)</span>Ljava/lang/String</span>;
+<span class="hljs-keyword">int</span>[] i(Object) -&gt; (Ljava/lang/Object;)[<span class="hljs-function">I</span>
+<span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">t</span><span class="hljs-params">()</span> -&gt; <span class="hljs-params">()</span>V</span></code></pre>
+
+<h3 id="操作码-OpCode"><a href="#操作码-OpCode" class="headerlink" title="操作码(OpCode)"></a>操作码(OpCode)</h3><p>Opcode是用于JVM解释运行Java程序的关键。每一个Opcode都有自己独特的含义与操作，如0x60，助记符iadd，将两个int相加。</p>
+<p>有一点要注意：操作码其实就是一个数字，我们平时经常看到的<code>iadd</code>，<code>invokestatic</code>并不是操作码，而是助记符。</p>
+<p>而Java中字节码的名称也与操作码有关，因为每个操作码都是用一个字节，所以叫字节码。</p>
+<p>每一个字节用来表示一个指令，理论上可以有 256 个操作码。</p>
+<p>对于ASM库来说，所有的Opcode都存储于<code>org.objectweb.asm.Opcodes</code>里面，其中还有包括它们在什么方法中作用的注释。</p>
+<p>有关于所有操作码的网页：<a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html">https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html</a></p>
+<hr>
+<p>这是ASM系列的第一篇，之后会持续更新。</p>
+<p>bilibili专栏同步： <a target="_blank" rel="noopener" href="https://www.bilibili.com/read/cv6875366">https://www.bilibili.com/read/cv6875366</a></p>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2021/02/13/Java-ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AASM%E5%BA%93%E4%BD%BF%E7%94%A8/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：ASM库使用</h2>
+        </a>
+      
+      <div class="card-text--row">Newer</div>
+    </div>
+  </article>
+</div>
+          
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+
+  
+  
+    <div class="disqus-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <p id="disqus_error" class="disqus-error" style="display: none;">如果你看不到评论，那么就真的看不到评论 w(゜Д゜)w</p>
+      <div id="disqus_thread" class="disqus-thread"></div>
+    </div>
+    <script type="text/javascript">
+      (function() {
+        var d = document, s = d.createElement('script'), c = d.querySelector(".disqus-container");
+        if (!c) return;
+        s.src = 'https://https://disqus.com/Nickid2018.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+        s.onerror = () => {
+          document.querySelector("#disqus_error").style.display = "block";
+        }
+        (d.head || d.body).appendChild(s);
+      })();
+    </script>
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>5</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#ASM%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%8C%E5%AD%97%E8%8A%82%E7%A0%81%E5%8F%88%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.</span> <span class="toc-text">ASM是什么，字节码又是什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0ASM%E5%BA%93%E4%BE%9D%E8%B5%96"><span class="toc-number">2.</span> <span class="toc-text">添加ASM库依赖</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%AE%E5%8A%A9%E5%AD%A6%E4%B9%A0ASM%E7%9A%84%E5%B7%A5%E5%85%B7"><span class="toc-number">3.</span> <span class="toc-text">帮助学习ASM的工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ASMifier-%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90ASM%E4%BB%A3%E7%A0%81"><span class="toc-number">3.1.</span> <span class="toc-text">ASMifier: 自动生成ASM代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#javap-exe-Java%E8%87%AA%E5%B8%A6%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81%E8%A7%A3%E6%9E%90%E5%B7%A5%E5%85%B7"><span class="toc-number">3.2.</span> <span class="toc-text">javap.exe: Java自带的字节码解析工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Eclipse%E6%8F%92%E4%BB%B6-Enhanced-Class-Decompiler"><span class="toc-number">3.3.</span> <span class="toc-text">Eclipse插件: Enhanced Class Decompiler</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ASM%E4%B8%AD%E7%BB%8F%E5%B8%B8%E4%BC%9A%E7%94%A8%E5%88%B0%E7%9A%84%E5%90%8D%E8%AF%8D"><span class="toc-number">4.</span> <span class="toc-text">ASM中经常会用到的名词</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB-%E5%9E%8B-%E7%9A%84%E4%B8%8D%E5%90%8C%E5%90%8D%E7%A7%B0"><span class="toc-number">4.1.</span> <span class="toc-text">类(型)的不同名称</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">4.2.</span> <span class="toc-text">类型描述符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">4.3.</span> <span class="toc-text">方法描述符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%A0%81-OpCode"><span class="toc-number">4.4.</span> <span class="toc-text">操作码(OpCode)</span></a></li></ol></li></ol>
+  </div>
+</section>
+
+
+      
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (5)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2021 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>
