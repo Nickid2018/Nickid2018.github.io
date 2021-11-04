@@ -108,4 +108,4 @@ theme: flexblock
 deploy:
   type: git
   repository: git@github.com:Nickid2018/Nickid2018.github.io.git
-  branch: master
+  branch: page
