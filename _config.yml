@@ -103,6 +103,12 @@ ignore:
 ## Themes: https://hexo.io/themes/
 theme: flexblock
 
+math:
+  engine: 'mathjax'
+  mathjax:
+    src:
+    config:
+
 # Deployment
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
