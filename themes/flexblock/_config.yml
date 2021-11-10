@@ -1,6 +1,7 @@
 # Header
 menu:
   首页: /
+  休闲小游戏: /games
   友链: /links
   关于: /about
 
@@ -79,9 +80,9 @@ favicon: /favicon.ico
 social_icon:
   enable: true
   icons:
-    ins     :
-    zhihu   :
-    weibo   : 
-    github  : https://github.com/Nickid2018/
-    twitter : https://twitter.com/Nickid2018/
-    bilibili: https://space.bilibili.com/443879411/
+    ins      :
+    zhihu    :
+    weibo    : 
+    github   : https://github.com/Nickid2018/
+    twitter  : https://twitter.com/Nickid2018/
+    bilibili : https://space.bilibili.com/443879411/
