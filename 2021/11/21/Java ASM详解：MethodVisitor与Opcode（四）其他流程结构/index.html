@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google-site-verification" content="7KjHJEhAPUbzDXLRtyq2yOGm2KCFVvp5YN588Uf9xNw" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <!-- 百度收录，真tmzz -->
+  <script>
+  (function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https'){
+   bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+    <!-- mathjax config similar to math.stackexchange -->
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      processEscapes: true
+    }
+  });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    });
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+  
+
+  
+
+  <title>Java ASM详解：MethodVisitor与Opcode（四）其他流程结构 | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.jpg)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/games">休闲小游戏</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：MethodVisitor与Opcode（四）其他流程结构</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2021-11-20T18:02:53.000Z" itemprop="datePublished">2021-11-20</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>上一篇专栏中，我们已经了解了基本的流程结构。这篇专栏将详细描述Java中其他的流程结构。</p>
+<h2 id="异常捕获结构"><a href="#异常捕获结构" class="headerlink" title="异常捕获结构"></a>异常捕获结构</h2><p>在平常我们使用流程结构时，除了选择结构和循环结构外，使用最多的大概就是异常捕获结构了。</p>
+<p>异常捕获结构的写入都使用了<code>visitTryCatchBlock</code>方法（内部的实现是<code>JSR</code>和<code>RET</code>字节码），它需要早于其他所有字节码写入，也就是在方法写入一开始就要定义。它的定义如下：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">visitTryCatchBlock</span><span class="hljs-params">(<span class="hljs-keyword">final</span> Label start, <span class="hljs-keyword">final</span> Label end, <span class="hljs-keyword">final</span> Label handler, <span class="hljs-keyword">final</span> String type)</span></span></code></pre>
+<p>其中，<code>start</code>是try块开始的标签；<code>end</code>是try结束后的标签（try的范围不包括这个标签）；<code>handler</code>是try块内抛出<code>Throwable</code>对象后跳转到的标签，即相应的catch块标签；<code>type</code>是catch接受的异常类型，要求传入异常类的全限定名（例外是finally块）。</p>
+<h3 id="try-catch"><a href="#try-catch" class="headerlink" title="try-catch"></a>try-catch</h3><p>在讲述完整的<code>try-catch-finally</code>块之前，我们先来看看普通的<code>try-catch</code>块怎么写入。</p>
+<p>普通的try-catch块类似这样：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">try</span> &#123;
+  <span class="hljs-comment">// try块</span>
+&#125; <span class="hljs-keyword">catch</span> (FirstException e) &#123;
+  <span class="hljs-comment">// 处理FirstException</span>
+&#125; <span class="hljs-keyword">catch</span> (SecondException e) &#123;
+  <span class="hljs-comment">// 处理SecondException</span>
+&#125;</code></pre>
+<p>对于一个指定的try块，可能有多个catch块和它对应。每一个catch块都需要用一次visitTryCatchBlock声明。对于catch块对应的跳转标签目标，它的栈帧信息应该和try块前的局部变量相同，但是操作栈上有一个对应的异常对象。下面给出了使用try-catch块的例子：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> <span class="hljs-title">parseIntSafely</span><span class="hljs-params">(String s)</span> </span>&#123;
+	<span class="hljs-keyword">try</span> &#123;
+		<span class="hljs-comment">/* labelTryStart */</span>
+		<span class="hljs-keyword">return</span> Integer.parseInt(s);
+	&#125; <span class="hljs-keyword">catch</span> (NumberFormatException e) &#123;
+		<span class="hljs-comment">/* labelCatch */</span>
+		<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+	&#125;
+&#125;</code></pre>
+<p>使用asm写入如下:</p>
+<blockquote>
+<p>javac编译时生成的字节码和这里不太一样——它会把已经在操作栈上的Throwable对象先存入局部变量，这是为了输出文件的行号。而这里我们选择直接忽视栈上的Throwable对象。</p>
+</blockquote>
+<pre><code class="hljs Java"><span class="hljs-comment">// 初始栈帧信息 [java/lang/String]</span>
+Label labelTryStart = <span class="hljs-keyword">new</span> Label();
+Label labelCatch = <span class="hljs-keyword">new</span> Label();
+mv.visitTryCatchBlock(labelTryStart, labelCatch, labelCatch, <span class="hljs-string">&quot;java/lang/NumberFormatException&quot;</span>); <span class="hljs-comment">// try的范围是[labelTryStart, labelCatch)</span>
+mv.visitLabel(labelTryStart);
+<span class="hljs-comment">// try块内部</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// 加载s</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/Integer&quot;</span>, <span class="hljs-string">&quot;parseInt&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)I&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// Integer::parseInt</span>
+mv.visitInsn(IRETURN);
+<span class="hljs-comment">// try结束</span>
+mv.visitLabel(labelCatch);
+<span class="hljs-comment">// catch块开始</span>
+<span class="hljs-comment">// 栈帧信息 [java/lang/String] [java/lang/NumberFormatException]</span>
+mv.visitFrame(F_SAME1, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">1</span>, <span class="hljs-keyword">new</span> Object[] &#123; <span class="hljs-string">&quot;java/lang/NumberFormatException&quot;</span> &#125;);
+mv.visitInsn(ICONST_0);
+mv.visitInsn(IRETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">1</span>); <span class="hljs-comment">// 最大栈帧为2 （catch块内），局部变量1</span></code></pre>
+<h3 id="multi-catch"><a href="#multi-catch" class="headerlink" title="multi-catch"></a>multi-catch</h3><p>除了普通的catch外，还有一种<code>multi-catch</code>结构：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">try</span> &#123;
+	<span class="hljs-comment">// try块</span>
+&#125; <span class="hljs-keyword">catch</span> (FirstException | SecondException e) &#123;
+	<span class="hljs-comment">// catch块</span>
+&#125;</code></pre>
+<p>multi-catch可以看做几个catch块被共用，这时栈帧信息上的操作栈压入的是multi-catch中所有异常类的<strong>共有超类</strong>。例如一个multi-catch块能捕获<code>NumberFormatException</code>和<code>NullPointerException</code>，它的字节码写入如下：</p>
+<pre><code class="hljs Java">Label labelTryStart = <span class="hljs-keyword">new</span> Label();
+Label labelCatch = <span class="hljs-keyword">new</span> Label();
+mv.visitTryCatchBlock(labelTryStart, labelCatch, labelCatch, <span class="hljs-string">&quot;java/lang/NumberFormatException&quot;</span>); <span class="hljs-comment">// try的范围是[labelTryStart, labelCatch)</span>
+mv.visitTryCatchBlock(labelTryStart, labelCatch, labelCatch, <span class="hljs-string">&quot;java/lang/NullPointerException&quot;</span>);
+<span class="hljs-comment">// 代码和try块，略</span>
+mv.visitLabel(labelCatch);
+mv.visitFrame(F_XXXX, X, XXX, <span class="hljs-number">1</span>, <span class="hljs-keyword">new</span> Object[] &#123; <span class="hljs-string">&quot;java/lang/RuntimeException&quot;</span> &#125;); <span class="hljs-comment">// 栈帧其他信息忽略，操作栈上是共有超类RuntimeException</span>
+<span class="hljs-comment">// catch块及之后的代码...</span></code></pre>
+<h3 id="try-finally"><a href="#try-finally" class="headerlink" title="try-finally"></a>try-finally</h3><p>说完了try-catch，我们再看看try-finally语句。</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">try</span> &#123;
+	<span class="hljs-comment">// try块内容</span>
+&#125; <span class="hljs-keyword">finally</span> &#123;
+	<span class="hljs-comment">// finally块内容</span>
+&#125;</code></pre>
+<p>finally其实类似catch，它们都会在操作栈上压入Throwable对象（如果产生了异常），但是它是<strong>无跳转条件（null）</strong>的，无论是否出现异常都会执行一次finally，即<strong>代码流必须经过finally</strong>。如果try块内包含return，也必须先执行finally的内容之后再执行return。如果finally中含有return，则try内的所有return将被忽略，通常IDE会对这种情况给出警告。</p>
+<p>在finally执行之后，如果是没有发生异常进入finally，则正常向下运行；如果是因为异常进入了finally，那么在finally执行之后必须抛出异常————这就意味着你必须把finally的字节码<strong>重复两遍</strong>，一次没有异常进入finally，一次发生异常进入finally。</p>
+<p>下面是一个例子：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">int</span> <span class="hljs-title">parseIntAndHello</span><span class="hljs-params">(String s)</span> </span>&#123;
+	<span class="hljs-keyword">try</span> &#123;
+		<span class="hljs-comment">/* labelTry */</span>
+		<span class="hljs-keyword">return</span> Integer.parseInt(s);
+		<span class="hljs-comment">/* labelReturn */</span>
+	&#125; <span class="hljs-keyword">finally</span> &#123;
+		<span class="hljs-comment">/* labelFinally */</span>
+		System.out.println(<span class="hljs-string">&quot;hello&quot;</span>);
+	&#125;
+&#125;</code></pre>
+<p>asm写入：</p>
+<blockquote>
+<p>javac编译还是不是这样，但是运行结果是一样的。javac会让一行语句的执行前后操作栈是空，所以在labelReturn前会进行<code>ISTORE</code>，在<code>IRETURN</code>前<code>ILOAD</code></p>
+</blockquote>
+<pre><code class="hljs Java">Label labelTry = <span class="hljs-keyword">new</span> Label();
+Label labelReturn = <span class="hljs-keyword">new</span> Label();
+Label labelFinally = <span class="hljs-keyword">new</span> Label();
+mv.visitTryCatchBlock(labelTry, labelReturn, labelFinally, <span class="hljs-keyword">null</span>); <span class="hljs-comment">// try位于[labelTry, labelReturn)，发生任何异常都会跳转finally</span>
+mv.visitLabel(labelTry);
+<span class="hljs-comment">// try开始</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// s</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/Integer&quot;</span>, <span class="hljs-string">&quot;parseInt&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)I&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// Integer::parseInt</span>
+<span class="hljs-comment">// try结束，无异常进入finally</span>
+mv.visitLabel(labelReturn);
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);
+mv.visitLdcInsn(<span class="hljs-string">&quot;hello&quot;</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// System.out.println</span>
+mv.visitInsn(IRETURN);
+<span class="hljs-comment">// 正常进入finally结束</span>
+mv.visitLabel(labelFinally);
+<span class="hljs-comment">// 发生异常进入finally</span>
+mv.visitFrame(F_SAME1, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">1</span>, <span class="hljs-keyword">new</span> Object[] &#123; <span class="hljs-string">&quot;java/lang/Throwable&quot;</span> &#125;);
+<span class="hljs-comment">// finally接受Throwable对象</span>
+mv.visitVarInsn(ASTORE, <span class="hljs-number">1</span>);
+<span class="hljs-comment">// 保存到槽位1用于之后抛出</span>
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);
+mv.visitLdcInsn(<span class="hljs-string">&quot;hello&quot;</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+<span class="hljs-comment">// 重复finally内容</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>);
+<span class="hljs-comment">// 取出Throwable对象</span>
+mv.visitInsn(ATHROW);
+<span class="hljs-comment">// 抛出</span>
+mv.visitMaxs(<span class="hljs-number">3</span>, <span class="hljs-number">2</span>);</code></pre>
+<h3 id="try-catch-finally"><a href="#try-catch-finally" class="headerlink" title="try-catch-finally"></a>try-catch-finally</h3><p>接下来，我们把<code>try-catch</code>和<code>try-finally</code>整合到一起。</p>
+<p>finally块的意义是无论发生什么异常都要保证执行，所以catch块的异常也会被finally接受。也就是说，一个完整的try-catch-finally语句需要$1+2catch$次visitTryCatchBlock，并且需要重复finally块字节码$1+catch$次。（其中$catch$是catch块的数量）</p>
+<p>下面是个整合的例子：</p>
+<p>public static int parseIntSafelyHello(String s) {<br>    try {<br>        /<em> ltry </em>/<br>        return Integer.parseInt(s);<br>        /<em> lreturn </em>/<br>    } catch (NumberFormatException e) {<br>        /<em> lcatch </em>/<br>        return -1;<br>        /<em> lcatchRet </em>/<br>    } finally {<br>        /<em> lfinally </em>/<br>        System.out.println(“hello”);<br>    }<br>}</p>
+<p>asm写入：</p>
+<p>Label ltry = new Label(), lreturn = new Label(), lcatch = new Label(), lcatchRet = new Label(), lfinally = new Label();<br>mv.visitTryCatchBlock(ltry, lreturn, lcatch, “java/lang/NumberFormatException”);<br>mv.visitTryCatchBlock(ltry, lreturn, lfinally, null);<br>mv.visitTryCatchBlock(lcatch, lcatchRet, lfinally, null);<br>mv.visitLabel(ltry);<br>// try块开始<br>mv.visitVarInsn(ALOAD, 0); // s<br>mv.visitMethodInsn(INVOKESTATIC, “java/lang/Integer”, “parseInt”, “(Ljava/lang/String;)I”, false); // Integer::parseInt<br>// try结束，try无异常进入finally<br>mv.visitLabel(lreturn);<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“hello”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false); // System.out.println<br>mv.visitInsn(IRETURN);<br>// try无异常finally结束<br>mv.visitLabel(lcatch);<br>// catch块开始<br>mv.visitFrame(F_SAME1, 0, null, 1, new Object[] { “java/lang/NumberFormatException” });<br>// 栈帧信息：压入异常对象<br>mv.visitInsn(POP);<br>// 我们不需要这个对象,直接弹栈（javac会进行ASTORE，无论是否使用，因为要记录名称）<br>mv.visitLabel(lcatchRet);<br>// catch无异常进入finally<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“hello”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>// 重复一遍finally…<br>mv.visitInsn(ICONST_M1);<br>mv.visitInsn(IRETURN); // 返回-1<br>mv.visitLabel(lfinally);<br>// 发生异常跳转finally<br>mv.visitFrame(F_SAME1, 0, null, 1, new Object[] { “java/lang/Throwable” });<br>mv.visitVarInsn(ASTORE, 1); // 保存到槽位1<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“hello”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>// 再重复一遍finally…<br>mv.visitVarInsn(ALOAD, 1);<br>mv.visitInsn(ATHROW);<br>// 抛出<br>mv.visitMaxs(3, 2);</p>
+<p>除了try-catch、multi-catch、try-finally、try-catch-finally结构外，还有一种结构：try-with-resources。这种结构要求一个AutoClosable的对象再try后的语句中初始化：</p>
+<p>try (AutoClosable res1 = getObject1(), res2 = getObject2(), …) {<br>    // try内的语句<br>} catch (Exception e) {<br>    // catch块<br>} finally {<br>    // finally…<br>}</p>
+<p>它可以转化为普通的try-catch-finally块，类似于这样（javac编译之后内部不是这样，这里是将执行流程强制转换为可读Java源码）：</p>
+<p>AutoClosable res = null;<br>try {<br>    res = getObject1();<br>    // try块内容…<br>} catch (Exception e) {<br>    // catch块内容…<br>    // 这里res也会被close，但是因为Java代码没法表现就没有写<br>} catch (Throwable t) {<br>    try {<br>        res.close(); // 这里其实res已经被创建了，但是因为Java代码没法表现就放在这里了<br>    } catch (Throwable t2) {<br>        t.addSupressed(t2);<br>    }<br>    throw t;<br>} finally {<br>    // finally…<br>}</p>
+<p>使用try-with-resources结构写入字节码的时候，只要记住每一个出口都会进行一次带try-catch的close就可以。由于这种结构很复杂且代码量巨大，就不举例子了。<br>二.switch多分支结构</p>
+<p>在一些情况下，if…else if…else结构非常的长，这时我们可以用switch替代。最简单的switch是键为整形数字常量（可以用int表示的）的，类似于这样：</p>
+<p>int i = …;<br>switch (i) {<br>    case 0:<br>    case 1:<br>        …<br>    …<br>    default:<br>        …<br>}</p>
+<p>在写入switch中，我们有两个方法可以选择：</p>
+<p>public void visitTableSwitchInsn(final int min, final int max, final Label dflt, final Label… labels)<br>public void visitLookupSwitchInsn(final Label dflt, final int[] keys, final Label[] labels)</p>
+<p>它们的相同之处是：它们都需要操作栈顶上有一个int类型的值。它们的不同之处在于它们对于键值的存储方式和使用的字节码：</p>
+<pre><code>visitTableSwitchInsn写入的键值是一个连续的数组——一个%5Bmin%2Cmax%5D的一个整形数字数组。如果switch中没有中间的某些键值，那么这些键值会和dflt一致，即default的标签（如果没有default块，则dflt应该指向switch结束后的第一条语句）。它使用TABLESWITCH字节码。
+
+visitLookupSwitchInsn要求传入一个switch键值的数组，数组内的数字要从小到大排序。labels数组的长度要与keys一致。dflt也是指向default或者switch结束后的第一条语句的标签。它使用LOOKUPSWITCH字节码。
+</code></pre><p>回到最简单的switch上来。我们需要按照键值的特性选择我们的写入方式：</p>
+<pre><code>如果switch内的键值差异小，并且键值组成一个连续整数数组的空缺不超过6个，则使用visitTableSwitchInsn
+
+如果switch内的键值差异大，则使用visitLookupSwitchInsn
+</code></pre><p>先看个简单的小例子：</p>
+<p>public static void test(int i) {<br>    switch (i) {<br>        case 0:<br>        case 1:<br>        /<em> label1 </em>/<br>            System.out.println(“1”);<br>        case 2:<br>        /<em> label2 </em>/<br>            System.out.println(“2”);<br>            break;<br>        case 3:<br>        /<em> label3 </em>/<br>            System.out.println(“3”);<br>    }<br>    /<em> labelEnd </em>/<br>}</p>
+<p>可以看到，键值%5Cleft%5C%7B%200%2C1%2C2%2C3%20%5Cright%5C%7D%20组成了一个连续的整数数组，所以这里我们应该使用visitTableSwitchInsn。</p>
+<p>mv.visitVarInsn(ILOAD, 0); // i<br>Label label1 = new Label(), label2 = new Label(), label3 = new Label(), labelEnd = new Label();<br>mv.visitTableSwitchInsn(0, 3, labelEnd, label1, label1, label2, label3);<br>// 解释：没有default块所以指向了switch结束的下一条语句，0和1用了一个跳转位置<br>mv.visitLabel(label1);<br>// 0和1处理<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“1”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(label2);<br>// 2的处理，注意这里0和1处理之后也会经过这个地方<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“2”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitJumpInsn(GOTO, labelEnd); // break的作用，跳出switch<br>mv.visitLabel(label3);<br>// 3的处理，这里不会被0、1、2访问了<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“3”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>// switch结束<br>mv.visitLabel(labelEnd);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 1);</p>
+<p>这是对于switch最简单的一种清况之一。因为byte、short、char在JVM内解释为int，所以这些步骤基本相同。</p>
+<p>switch语句还可以用于枚举类型，下面我们定义了一个枚举，并使用了它：</p>
+<p>enum TestEnum {<br>    FIRST, SECOND, THIRD, FOURTH<br>}</p>
+<p>public static void test(TestEnum i) {<br>    switch (i) {<br>        case FIRST:<br>        case SECOND:<br>            System.out.println(“1”);<br>        case THIRD:<br>            System.out.println(“2”);<br>            break;<br>        case FOURTH:<br>            System.out.println(“3”);<br>        default:<br>            System.out.println(“4”);<br>    }<br>}</p>
+<p>枚举类型不能直接作为两种switch字节码的参数，它必须先变为一个int才能传入字节码。为此，javac在编译的时候会自动创建一个内部类，用于保存这个类里面出现的所有使用枚举对象switch的一个映射表。对于我们定义的TestEnum，它对应的映射类应该像这样（假设我们方法定义的类是Test）：</p>
+<p>// 注意：这个类和字段都要有ACC_SYNTHETIC访问标志<br>class Test$1 {</p>
+<pre><code>static final int[] $SwitchMap$TestEnum;
+
+static &#123;
+    $SwitchMap$TestEnum = new int[TestEnum.values().length];
+    try &#123;
+        $SwitchMap$TestEnum[TestEnum.FIRST.ordinal()] = 1;
+    &#125; catch (NoSuchFieldError e) &#123;
+    &#125;
+    try &#123;
+        $SwitchMap$TestEnum[TestEnum.SECOND.ordinal()] = 2;
+    &#125; catch (NoSuchFieldError e) &#123;
+    &#125;
+    try &#123;
+        $SwitchMap$TestEnum[TestEnum.THIRD.ordinal()] = 3;
+    &#125; catch (NoSuchFieldError e) &#123;
+    &#125;
+    try &#123;
+        $SwitchMap$TestEnum[TestEnum.FOURTH.ordinal()] = 4;
+    &#125; catch (NoSuchFieldError e) &#123;
+    &#125;
+&#125;
+</code></pre><p>}</p>
+<p>这个内部类中含有所有在这个类中出现的枚举对象，每个枚举类都会创建一个字段，命名为“$SwitchMap$+.替换成$的类型名”，它们的长度是对应枚举类枚举字段的数量，按照ordinal大小排序将1-n写入数组（n是本类使用了多少个这个类的枚举字段）。</p>
+<p>接下来，switch的传入方式也发生了变化：</p>
+<p>TestEnum i …<br>switch (Test$1.$SwitchMap$TestEnum[i.ordinal()]) {<br>    …<br>}</p>
+<p>那么之前给出的例子我们可以用asm写入为：</p>
+<p>mv.visitFieldInsn(GETSTATIC, “Test$1”, “$SwitchMap$TestEnum”, “[I”); // 获取常量字段<br>mv.visitVarInsn(ALOAD, 0); // i<br>mv.visitMethodInsn(INVOKEVIRTUAL, “TestEnum”, “ordinal”, “()I”, false); // Enum::ordinal<br>mv.visitInsn(IALOAD); // 取出常量<br>Label label1 = new Label(), label2 = new Label(), label3 = new Label(), labelDefault = new Label(), labelEnd = new Label();<br>mv.visitTableSwitchInsn(1, 4, labelDefault, label1, label1, label2, label3);<br>// default标签-labelDefault, 1/2用了同一个跳转目标<br>mv.visitLabel(label1);<br>// 1/2 FIRST/SECOND<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“1”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(label2);<br>// 3 THIRD<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“2”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitJumpInsn(GOTO, labelEnd); // break<br>mv.visitLabel(label3);<br>// 4 FOURTH<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“3”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(labelDefault);<br>// default<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“4”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(labelEnd);<br>// switch结束<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 2);</p>
+<p>如果是我们自己写入asm，推荐不要用这种方式写入——毕竟太麻烦了。最好的方案是使用Enum::ordinal获取序号对序号进行switch，而不是存一个新的表。</p>
+<p>除了枚举和基本int之外，switch还允许字符串传入。下面就是一个例子：</p>
+<p>public static void test(String s) {<br>    switch (s) {<br>        case “HELLO”:<br>            System.out.println(“hello”);<br>            break;<br>        case “BYEBYE”:<br>            System.out.println(“byebye”);<br>            break;<br>        default:<br>            System.out.println(“ss”);<br>    }<br>}</p>
+<p>很明显，String不能直接转换成为int。在String中，hashCode这个方法可以让我们将字符串映射到int上，这样就能把它作为键值。但是还有一个问题需要解决：String和int不能一一对应——不同的字符串可能有相同的hashCode，例如“ddnqavbj”和“166lr735ka3q6”的哈希码值都为0。因此，javac在编译时将这个switch块拆开为两个，并使用一个临时量保存字符串的映射。这样，上面的例子就变成了下面这样：</p>
+<p>public static void test(String s) {<br>    {<br>        String tempStr = s;<br>        int temp = -1;<br>        switch (tempStr.hashCode()) {<br>            case 68624562: // “HELLO”的哈希码<br>                /<em> hashHello </em>/<br>                if (tempStr.equals(“HELLO”))<br>                    temp = 0;<br>                break;<br>            case 1973839168: // “BYEBYE”的哈希码值<br>                /<em> hashBye </em>/<br>                if (tempStr.equals(“BYEBYE”))<br>                    temp = 1;<br>                break;<br>        }<br>        /<em> switch2 </em>/<br>        switch (temp) {<br>            case 0:<br>                /<em> case0 </em>/<br>                System.out.println(“hello”);<br>                break;<br>            case 1:<br>                /<em> case1 </em>/<br>                System.out.println(“byebye”);<br>                break;<br>            default:<br>                /<em> caseDefault </em>/<br>                System.out.println(“ss”);<br>        }<br>    }<br>    /<em> end </em>/<br>}</p>
+<p>按照上面的Java代码，我们能用asm将它写入：</p>
+<p>// 初始帧 [java/lang/String]<br>mv.visitVarInsn(ALOAD, 0); // s<br>mv.visitVarInsn(ASTORE, 1); // 转存到tempStr<br>mv.visitInsn(ICONST_M1); // -1<br>mv.visitVarInsn(ISTORE, 2); // 存入temp<br>mv.visitVarInsn(ALOAD, 1); // tempStr<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/String”, “hashCode”, “()I”, false); // tempStr.hashCode()<br>Label hashHello = new Label(), hashBye = new Label(), switch2 = new Label();<br>mv.visitLookupSwitchInsn(switch2, new int[]{ 68624562, 1973839168 }, new Label[]{ hashHello, hashBye });<br>mv.visitLabel(hashHello);<br>// HELLO的哈希码<br>// 栈帧 [java/lang/String java/lang/String I]<br>mv.visitFrame(F_APPEND, 2, new Object[]{“java/lang/String”, Opcodes.INTEGER}, 0, null);<br>mv.visitVarInsn(ALOAD, 1); // tempStr<br>mv.visitLdcInsn(“HELLO”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/String”, “equals”, “(Ljava/lang/Object;)Z”, false); // 判断<br>mv.visitJumpInsn(IFEQ, switch2); // 反转判断，失败直接跳转出去<br>mv.visitInsn(ICONST_0); // 0<br>mv.visitVarInsn(ISTORE, 2); // 赋值给temp<br>mv.visitJumpInsn(GOTO, switch2); // 也跳转出去<br>mv.visitLabel(hashBye);<br>// BYEBYE的哈希码<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitVarInsn(ALOAD, 1); // tempStr<br>mv.visitLdcInsn(“BYEBYE”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/String”, “equals”, “(Ljava/lang/Object;)Z”, false); // 判断<br>mv.visitJumpInsn(IFEQ, switch2); // 反转判断，失败直接跳转<br>mv.visitInsn(ICONST_1); // 1<br>mv.visitVarInsn(ISTORE, 2); // 赋值给temp<br>mv.visitLabel(switch2);<br>// 第一个switch结束<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitVarInsn(ILOAD, 2); // 加载temp<br>Label case0 = new Label(), case1 = new Label(), caseDefault = new Label(), end = new Label();<br>mv.visitLookupSwitchInsn(caseDefault, new int[]{ 0, 1 }, new Label[]{ case0, case1 });<br>// 这里可以用tableswitch，但是javac是这样编译出来的<br>mv.visitLabel(case0);<br>// HELLO<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“hello”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitJumpInsn(GOTO, end); // 跳转结束<br>mv.visitLabel(case1);<br>// BYEBYE<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“byebye”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitJumpInsn(GOTO, end); // 跳转结束<br>mv.visitLabel(caseDefault);<br>// default<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“ss”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(end);<br>// 结束<br>// 栈帧信息 [java/lang/String]<br>mv.visitFrame(F_CHOP, 2, null, 0, null);<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 3);</p>
+<p>最后来看看Java 14新加的增强型switch。</p>
+<p>首先，增强型switch可以返回一个值赋给变量或者进行操作：</p>
+<p>System.out.println(switch (s) {<br>    case “HELLO” -&gt; 3;<br>    case “BYEBYE” -&gt; 4;<br>    default -&gt; 5;<br>});</p>
+<p>这种操作的本质还是和上面的一样，下面是展开增强型switch但是不展开String转换的结果：</p>
+<p>int temp;<br>switch (s) {<br>    case “HELLO”:<br>        temp = 3;<br>        break;<br>    case “BYEBYE”:<br>        temp = 4;<br>        break;<br>    default:<br>        temp = 5;<br>}<br>System.out.println(temp);</p>
+<p>另一种增强型switch使用了yield关键字：</p>
+<p>System.out.println(switch (s) {<br>    case “HELLO”:<br>        System.out.println(“case0”);<br>        yield 3;<br>    case “BYEBYE”:<br>        System.out.println(“case1”);<br>        yield 4;<br>    default:<br>        System.out.println(“default”);<br>        yield 5;<br>});</p>
+<p>它的原理也和上面差不多：</p>
+<p>int temp;<br>switch (s) {<br>    case “HELLO”:<br>        System.out.println(“case0”);<br>        temp = 3;<br>        break;<br>    case “BYEBYE”:<br>        System.out.println(“case1”);<br>        temp = 4;<br>        break;<br>    default:<br>        System.out.println(“default”);<br>        temp = 5;<br>}<br>System.out.println(temp);</p>
+<p>这篇专栏到这里就结束了（最后不写例子主要是因为这两种结构需要的代码量太大了）。</p>
+<p>这回一共讲了4个字节码，加上以前的一共190个。</p>
+<p>这篇文章也同步到了博客上，也可以去那里阅读。（排版有些不同，但是内容一样）</p>
+<p>有错误可以在评论区指出~</p>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2021/11/06/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AMethodVisitor%E4%B8%8EOpcode%EF%BC%88%E4%B8%89%EF%BC%89%E6%A0%87%E7%AD%BE%EF%BC%8C%E6%9D%A1%E4%BB%B6%E7%BB%93%E6%9E%84%EF%BC%8C%E5%BE%AA%E7%8E%AF%E7%BB%93%E6%9E%84%EF%BC%8C%E6%A0%88%E5%B8%A7/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：MethodVisitor与Opcode（三）标签，条件结构，循环结构，栈帧</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+    <div class="valine-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <div id="valine_thread" class="valine-thread"></div>
+    </div>
+    <script type="text/javascript" src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script type="text/javascript" src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script type="text/javascript">
+      new Valine({
+        el: "#valine_thread",
+        appId: "mW2DHhwzDNYk9Gk1hsi4XJV7-gzGzoHsz",
+        appKey: "reCUh7XTXRmlDsR3YfbjreRb",
+        avatar: "mp",
+        placeholder: "发一条友善的评论吧~~",
+        notify: true,
+        visitor: true,
+        pageSize: 10,
+      });
+    </script>
+  
+
+  
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>7</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%82%E5%B8%B8%E6%8D%95%E8%8E%B7%E7%BB%93%E6%9E%84"><span class="toc-number">1.</span> <span class="toc-text">异常捕获结构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#try-catch"><span class="toc-number">1.1.</span> <span class="toc-text">try-catch</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#multi-catch"><span class="toc-number">1.2.</span> <span class="toc-text">multi-catch</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#try-finally"><span class="toc-number">1.3.</span> <span class="toc-text">try-finally</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#try-catch-finally"><span class="toc-number">1.4.</span> <span class="toc-text">try-catch-finally</span></a></li></ol></li></ol>
+  </div>
+</section>
+
+
+      
+<section class="widet-notice widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-notice" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M512 945.02305225v28.15620663a24.27259221 24.27259221 0 0 1-24.27259221 24.27259335H394.0352a48.54518557 48.54518557 0 0 1-41.74885888-23.78714112l-110.68302222-184.47170332a132.04290333 132.04290333 0 0 1-17.47626667-48.54518557h118.4502511a200.97706667 200.97706667 0 0 1 76.21594113 14.56355556l20.38897777 133.49925888a48.54518557 48.54518557 0 0 0 36.40888888 27.67075555l16.01991111 2.91271112a24.27259221 24.27259221 0 0 1 20.38897778 25.72894889zM997.45185223 463.45481443a194.18074112 194.18074112 0 0 1-38.8361489 116.50844445 24.75804445 24.75804445 0 0 1-36.4088889 0l-34.95253333-34.95253333a24.27259221 24.27259221 0 0 1-2.91271111-30.58346667 97.09036999 97.09036999 0 0 0 0-106.79940665 24.27259221 24.27259221 0 0 1 2.91271111-30.58346666l34.95253333-34.95253334a24.75804445 24.75804445 0 0 1 18.93262223-7.28177777 26.2144 26.2144 0 0 1 17.47626667 9.70903665A194.18074112 194.18074112 0 0 1 997.45185223 463.45481443z m-194.18074112-388.36148111v776.72296335a48.54518557 48.54518557 0 0 1-48.54518556 48.54518443h-28.64165888a48.54518557 48.54518557 0 0 1-33.98163001-14.07810332l-145.63555556-143.20829668A291.27111111 291.27111111 0 0 0 342.57730333 657.63555556H172.18370333a145.63555556 145.63555556 0 0 1-145.63555556-145.63555556v-97.09036999a145.63555556 145.63555556 0 0 1 145.63555556-145.63555556h170.3936a291.27111111 291.27111111 0 0 0 206.31703779-85.43952668l145.63555555-143.20829554a48.54518557 48.54518557 0 0 1 33.98162888-14.07810446H754.72592555a48.54518557 48.54518557 0 0 1 48.54518556 48.54518555z" fill="currentColor"></path>
+</svg>
+    <span>NOTICE</span>
+  </div>
+  <div class="widget-body">
+    <p>联系我可以发邮件到nickid2018@outlook.com</p>
+  </div>
+</section>
+
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (7)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://space.bilibili.com/443879411/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" class="icon icon-github"><path d="M800.768 237.216h-51.264l44.832-44.832c19.232-19.232 19.232-57.664 0-76.864s-57.664-19.232-76.864 0l-128.128 121.728h-153.76L307.456 115.52c-19.232-19.232-57.664-19.232-76.864 0s-19.232 57.664 0 76.864l44.832 44.832H224.16C134.464 237.216 64 307.68 64 397.376v345.952c0 96.096 70.464 166.56 160.16 166.56h570.144c89.696 0 160.16-70.464 160.16-160.16V397.376c6.4-89.696-64.064-160.16-153.76-160.16z m44.864 506.112a57.44 57.44 0 0 1-57.664 57.664H230.624a57.44 57.44 0 0 1-57.664-57.664v-339.52c0-32.032 25.632-57.664 57.664-57.664h557.344c32.032 0 57.664 25.632 57.664 57.664v339.52zM345.952 461.44a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z m333.12 0a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z"></path></svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2021 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>
