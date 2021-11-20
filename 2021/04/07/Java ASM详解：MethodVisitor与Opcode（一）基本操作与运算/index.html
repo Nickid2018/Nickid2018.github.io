@@ -163,9 +163,12 @@
         <p>前文我们说到了很多Visitor，它们用于给类中定义类型，添加字段，附上注释。但是对于一个语言来说，最重要的那一部分我们还没有说到——那就是：方法。</p>
 <h2 id="方法定义"><a href="#方法定义" class="headerlink" title="方法定义"></a>方法定义</h2><p>在ClassVisitor中，我们看到了有一个方法名为visitMethod，参数是(int，String，String，String，String[])，按照参数列表的顺序，它们分别指<strong>访问标志，方法名，方法描述符，泛型签名和抛出异常列表</strong>，返回一个MethodVisitor。（关于方法描述符，请看此系列的第一篇；关于访问标志，请看第二篇）</p>
 <p>对于方法名，有下面的规则：</p>
-<p><font color=blue>1.方法名不能是关键字或保留字（goto）</p>
-<p>2.方法名不能以数字开头</p>
-<p>3.可以为&lt;init&gt;和&lt;clinit&gt;</font></p>
+<font color=blue>1.方法名不能是关键字或保留字（goto）
+
+2.方法名不能以数字开头
+
+3.可以为&lt;init&gt;和&lt;clinit&gt;</font>
+
 <p>其中，<code>&lt;init&gt;</code>是构造函数，一个类可以有不止一个构造函数。而<code>&lt;clinit&gt;</code>每个类最多有一个，并且方法描述符必须为<code>()V</code>，它在类初始化阶段被JVM调用。（包括调用这个类的成员和Class.forName，但不包括Class.forName的initialize参数为false时的调用）</p>
 <p>若方法名不正确，在尝试加载这个类的时候会抛出<code>java.lang.ClassFormatError: Illegal method name</code>。</p>
 <p>抛出异常列表中，所有的类名称都为<strong>全限定名</strong>。</p>
@@ -176,7 +179,6 @@
 <p>在之后的讲解中，我们会大量的使用这个名词，在接下来的编写中，操作栈的变化将会像下面这样写：</p>
 <pre><code class="hljs plaintext">输入：XXX YYY
 输出：ZZZ</code></pre>
-
 <h2 id="局部变量表（Local-Variable-Table）"><a href="#局部变量表（Local-Variable-Table）" class="headerlink" title="局部变量表（Local Variable Table）"></a>局部变量表（Local Variable Table）</h2><p>局部变量表在方法调用中分配的另一个空间，用于存储现在方法内所有的局部变量，表中的数据可以被编号为0-n，叫Slot。普通的元素只会占用一个Slot，但long和double这种数据会占用两个。关于这个的详细使用，请看下面的xload和xstore的字节码介绍。</p>
 <p>当这个方法为静态方法时，局部变量表会将参数列表中的变量按顺序放入局部变量表中。</p>
 <p>当这个方法不是静态方法，局部变量表的0位是this，之后才会将参数列表变量依次放入表中。</p>
@@ -200,11 +202,11 @@
 <p>在下文说到它们时，会以下面的方式表达：</p>
 <pre><code class="hljs plaintext">方法：visitXXXInsn
 参数：XXX YYY ZZZ</code></pre>
-
 <p>到这里，所有有关于字节码指令的方法就结束了。块级结构的方法会在下一篇说。</p>
 <p>最后，说一下每个方法都要在最后调用的方法：visitMaxs(int, int)。它第一个参数是操作栈的最大大小，第二个是局部变量的个数。如果你调用这个方法时局部变量数量写小了，就会在生成方法调用时抛出<code>java.lang.ClassFormatError: Arguments can&#39;t fit into locals</code>，如果操作栈大小写小了，在生成方法调用时会抛出<code>java.lang.VerifyError: Stack size too large</code></p>
 <p>那么下面，我们将逐系列逐条讲解所有的字节码。这篇专栏先讲基本的操作栈加载存储等操作、常量获取和运算操作。</p>
-<p><font color=blue>注意：接下来的x可以为a（针对对象）、i（针对int）、l（针对long）、f（针对float）、d（针对double）、b（针对byte）、c（针对char）、s（针对short），它代表了操作对象的类型。有些时候没有针对于byte和short的专用字节码，这是因为在JVM中，byte和short在被计算时会被强制拉长为int，所以它们使用的和int一样。char和int能互相转换。boolean类似，它们也需要使用int的字节码，而且boolean值的false就是int值0，而true就是int值1。</font></p>
+<font color=blue>注意：接下来的x可以为a（针对对象）、i（针对int）、l（针对long）、f（针对float）、d（针对double）、b（针对byte）、c（针对char）、s（针对short），它代表了操作对象的类型。有些时候没有针对于byte和short的专用字节码，这是因为在JVM中，byte和short在被计算时会被强制拉长为int，所以它们使用的和int一样。char和int能互相转换。boolean类似，它们也需要使用int的字节码，而且boolean值的false就是int值0，而true就是int值1。</font>
+
 <h2 id="字节码介绍"><a href="#字节码介绍" class="headerlink" title="字节码介绍"></a>字节码介绍</h2><h3 id="啥事都不干的字节码：nop"><a href="#啥事都不干的字节码：nop" class="headerlink" title="啥事都不干的字节码：nop"></a>啥事都不干的字节码：nop</h3><pre><code class="hljs Java">输入：无
 输出：无
 方法：visitInsn
@@ -220,7 +222,6 @@
 使用范例：
 	mv.visitVarInsn(ALOAD, <span class="hljs-number">5</span>);
 	mv.visitVarInsn(FLOAD, <span class="hljs-number">3</span>); <span class="hljs-comment">// 在javap反汇编中，此处变为fload_3</span></code></pre>
-
 <p>如果在调用此字节码时对应位置没有初始化变量（原先为参数或已经用xstore进行值的放入被视为该位置被初始化），在生成方法调用时会抛出<code>java.lang.VerifyError: Accessing value from uninitialized register &lt;slot&gt;</code>。</p>
 <p>如果要进行加载的对象位置小于等于3，可以用对应的xload_n版本代替（注意，ASM9的Opcodes中已经不存在xload_n版本的字节码常量，但是在javap反汇编时可以看到此条），例如aload_2。</p>
 <h3 id="存储字节码：xstore与xstore-n"><a href="#存储字节码：xstore与xstore-n" class="headerlink" title="存储字节码：xstore与xstore_n"></a>存储字节码：<i>x</i>store与<i>x</i>store_<i>n</i></h3><p>x=a/i/l/f/d;n=0,1,2,3</p>
@@ -312,7 +313,6 @@
 	mv.visitInsn(ICONST_M1); <span class="hljs-comment">// -1</span>
 	mv.visitInsn(FCONST_0); <span class="hljs-comment">// +0.0f</span>
 	mv.visitInsn(LCONST_1); <span class="hljs-comment">// 1L</span></code></pre>
-
 <p>当数字较小时，获得数字常量可以不使用LDC，可以直接用这些字节码代替（节省常量池空间）。</p>
 <h3 id="整数常量字节码：bipush和sipush"><a href="#整数常量字节码：bipush和sipush" class="headerlink" title="整数常量字节码：bipush和sipush"></a>整数常量字节码：bipush和sipush</h3><pre><code class="hljs Java">输入：无
 输出：数字常量值
@@ -323,7 +323,6 @@
 使用范例：
 	mv.visitIntInsn(BIPUSH, <span class="hljs-number">27</span>); <span class="hljs-comment">// 27</span>
 	mv.visitIntInsn(SIPUSH, -<span class="hljs-number">2700</span>); <span class="hljs-comment">// -2700</span></code></pre>
-
 <p>当一个数字没有超过这两个字节码规定的范围，我们都可以使用这两个字节码获取整数常量。在编译中，属于这个范围的数字都是用它们进行获取整数（除非是-1~5），而更大/小的整数都是用LDC。</p>
 <p>说完了基本的加载存储常量指令，下面来看看程序的最基本功能：计算。</p>
 <h3 id="取反运算字节码：xneg"><a href="#取反运算字节码：xneg" class="headerlink" title="取反运算字节码：xneg"></a>取反运算字节码：<i>x</i>neg</h3><p>x=i/l/f/d</p>
@@ -469,7 +468,7 @@
 	mv.visitIincInsn(<span class="hljs-number">1</span>, -<span class="hljs-number">40</span>);</code></pre>
 <p>自增字节码是适用于int的字节码，在以下情境中会用到:</p>
 <ol>
-<li><p>i++或i–或++i或–i</p>
+<li><p>i++或i—或++i或—i</p>
 </li>
 <li><p>i+=x或i-=x</p>
 </li>
@@ -503,7 +502,6 @@
 <pre><code class="hljs Java">mv.visitVarInsn(ILOAD, <span class="hljs-number">0</span>);
 mv.visitInsn(ICONST_M1);
 mv.visitInsn(IXOR);</code></pre>
-
 <h3 id="按位左移运算字节码：xshl"><a href="#按位左移运算字节码：xshl" class="headerlink" title="按位左移运算字节码：xshl"></a>按位左移运算字节码：<i>x</i>shl</h3><p>x=i/l</p>
 <pre><code class="hljs Java">输入：整数 左移位数
 输出：按位左移的整数
@@ -527,7 +525,6 @@ mv.visitInsn(IXOR);</code></pre>
 参数：无
 使用范例：
 	mv.visitInsn(LUSHR);</code></pre>
-
 <p>这个字节码用于计算按位无符号右移操作（a&gt;&gt;&gt;b）。如果右移位数超过了32（int）或64（long）位，系统只会采取最低的5（int）或6（long）位进行无符号右移操作。</p>
 <p>运算字节码说完之后，最后，来看看数字转换的字节码。</p>
 <h3 id="转换为float的字节码：x2f"><a href="#转换为float的字节码：x2f" class="headerlink" title="转换为float的字节码：x2f"></a>转换为float的字节码：<i>x</i>2f</h3><p>x=i/l/d</p>
@@ -537,7 +534,6 @@ mv.visitInsn(IXOR);</code></pre>
 参数：无
 使用范例：
 	mv.visitInsn(I2F);</code></pre>
-
 <p>转换为float采取了IEEE 754的取值规律，详见xadd。虽然对于int，float转换是由低级拓宽范围，但是由于float值不能取到所有int可表示的数字（float仅有24位精确数字，其他为指数和符号位），所以此转换仍然不精确。</p>
 <h3 id="转换为double的字节码：x2d"><a href="#转换为double的字节码：x2d" class="headerlink" title="转换为double的字节码：x2d"></a>转换为double的字节码：<i>x</i>2d</h3><p>x=i/l/f</p>
 <pre><code class="hljs Java">输入：数字
@@ -562,7 +558,6 @@ mv.visitInsn(IXOR);</code></pre>
 参数：无
 使用范例：
 	mv.visitInsn(D2L);</code></pre>
-
 <p>由于long级别大于int，int转换为long不丢失精度。在浮点数下，long与int的转换规则类似。</p>
 <h3 id="int转换为其他基本类型的字节码：i2x"><a href="#int转换为其他基本类型的字节码：i2x" class="headerlink" title="int转换为其他基本类型的字节码：i2x"></a>int转换为其他基本类型的字节码：i2<i>x</i></h3><p>x=b/c/s</p>
 <pre><code class="hljs Java">输入：数字

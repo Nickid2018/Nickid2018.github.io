@@ -171,13 +171,11 @@
 <hr>
 <p><img src="/resources/2021030701/asm_picture.jpg" alt="ASM图标"></p>
 <p>官网：<a target="_blank" rel="noopener" href="https://asm.ow2.io/">https://asm.ow2.io/</a></p>
-<h2 id="添加ASM库依赖"><a href="#添加ASM库依赖" class="headerlink" title="添加ASM库依赖"></a>添加ASM库依赖</h2><p>首先，是有关于ASM的Maven依赖</p>
-<pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
+<h2 id="添加ASM库依赖"><a href="#添加ASM库依赖" class="headerlink" title="添加ASM库依赖"></a>添加ASM库依赖</h2><p>首先，是有关于ASM的Maven依赖<br><pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
     <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
     <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-all<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
     <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>6.0_BETA<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
-<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre>
-
+<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre></p>
 <p>或者</p>
 <pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
 	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
@@ -199,14 +197,13 @@
 	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-analysis<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
 	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
 <span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre>
-
 <p>如果使用第一种，那么你最高能依赖的版本是6.0_BETA。而第二种是现在仍在持续更新的，它相当于把原先的asm-all库分开成为不同的部分，但是基本的asm库是必须的。</p>
 <p>这个库以后会详细讲述，这里先说几个强有力的工具。</p>
 <h2 id="帮助学习ASM的工具"><a href="#帮助学习ASM的工具" class="headerlink" title="帮助学习ASM的工具"></a>帮助学习ASM的工具</h2><h3 id="ASMifier-自动生成ASM代码"><a href="#ASMifier-自动生成ASM代码" class="headerlink" title="ASMifier: 自动生成ASM代码"></a>ASMifier: 自动生成ASM代码</h3><p>ASM库中有不少实用类，为了了解晦涩难懂的ASM代码，可以用ASMifier来进行解析。这是一个可执行类，你可以通过java.exe运行它。</p>
-<p><font color="#ff0000">注意：在9.0已经没有这个类了</font></p>
+<font color="#ff0000">注意：在9.0已经没有这个类了</font>
+
 <p>运行方法：下载ASM的jar（比如asm-all-6.0_beta.jar）或者从你的.m2文件夹（asm-all）里面找到它，然后运行：</p>
 <pre><code class="hljs SH">java -classpath asm-all-6.0_BETA.jar org.objectweb.asm.util.ASMifier DemoDump.class</code></pre>
-
 <p>你会得到这样的输出：</p>
 <p><img src="/resources/2021030701/asmifier_run.png" alt="运行ASMifier的效果"></p>
 <h3 id="javap-exe-Java自带的字节码解析工具"><a href="#javap-exe-Java自带的字节码解析工具" class="headerlink" title="javap.exe: Java自带的字节码解析工具"></a>javap.exe: Java自带的字节码解析工具</h3><p>javap是你在安装JDK时就有的一个程序文件，是JDK的原生字节码解析工具，关于它的使用因篇幅有限不再细说，可以参考这篇文章 <a target="_blank" rel="noopener" href="https://www.cnblogs.com/frinder6/articles/5440173.html">https://www.cnblogs.com/frinder6/articles/5440173.html</a></p>
@@ -238,7 +235,6 @@
 <span class="hljs-keyword">char</span> -&gt; C
 <span class="hljs-keyword">void</span> -&gt; V
 <span class="hljs-keyword">boolean</span> -&gt; Z</code></pre>
-
 <ul>
 <li><p>非数组的引用类型为 L+全限定名+;</p>
 </li>
@@ -249,7 +245,6 @@
 <pre><code class="hljs Java">java.lang.Thread -&gt; Ljava/lang/Thread;
 java.lang.Object[] -&gt; [Ljava/lang/Object;
 <span class="hljs-keyword">int</span>[][] -&gt; [[I</code></pre>
-
 <h3 id="方法描述符"><a href="#方法描述符" class="headerlink" title="方法描述符"></a>方法描述符</h3><p>了解类名称和类型描述符，下面讲一下方法描述符（其实类型描述符和方法描述符统称描述符）</p>
 <p>方法描述符是class文件中保存参数类型列表和返回值类型的方式，在各种方法调用的操作码里面都会涉及到。</p>
 <p>规则：</p>
@@ -263,7 +258,6 @@ java.lang.Object[] -&gt; [Ljava/lang/Object;
 <span class="hljs-function">String <span class="hljs-title">s</span><span class="hljs-params">(<span class="hljs-keyword">double</span>[],<span class="hljs-keyword">boolean</span>)</span> -&gt; <span class="hljs-params">([DZ)</span>Ljava/lang/String</span>;
 <span class="hljs-keyword">int</span>[] i(Object) -&gt; (Ljava/lang/Object;)[<span class="hljs-function">I</span>
 <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">t</span><span class="hljs-params">()</span> -&gt; <span class="hljs-params">()</span>V</span></code></pre>
-
 <h3 id="操作码-OpCode"><a href="#操作码-OpCode" class="headerlink" title="操作码(OpCode)"></a>操作码(OpCode)</h3><p>Opcode是用于JVM解释运行Java程序的关键。每一个Opcode都有自己独特的含义与操作，如0x60，助记符iadd，将两个int相加。</p>
 <p>有一点要注意：操作码其实就是一个数字，我们平时经常看到的<code>iadd</code>，<code>invokestatic</code>并不是操作码，而是助记符。</p>
 <p>而Java中字节码的名称也与操作码有关，因为每个操作码都是用一个字节，所以叫字节码。</p>
