@@ -9,7 +9,7 @@ menu:
 banner: /banner.jpg
 
 # 站点通知信息
-notice: 联系我可以发邮件到nickid2018@outlook.com
+notice: 本站所有文章都禁止以任何形式的抄袭或转载哦~
 
 # 作者信息
 author:
@@ -74,7 +74,6 @@ baidu_analytics: f32d0139ad5f3b55317728550c14d428
 tencent_analytics: 
 # 站点ico
 favicon: /favicon.ico
-
 
 # Social Icon
 social_icon:
