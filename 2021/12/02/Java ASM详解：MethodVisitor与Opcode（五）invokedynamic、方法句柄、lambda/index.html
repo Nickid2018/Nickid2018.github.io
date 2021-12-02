@@ -206,23 +206,23 @@
 <span class="hljs-function"><span class="hljs-comment">// 从Field反反射到方法句柄上</span></span>
 <span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">unreflectSetter</span><span class="hljs-params">(Field f)</span> <span class="hljs-keyword">throws</span> IllegalAccessException</span></code></pre>
 <p>下面是使用例：</p>
-<ol>
+<ul>
 <li>获取<code>System::currentTimeMillis() -&gt; long</code>的方法句柄</li>
-</ol>
+</ul>
 <pre><code class="hljs Java">MethodType mt = MethodType.methodType(<span class="hljs-keyword">long</span>.class); <span class="hljs-comment">// ()J</span>
 MethodHandle handle = MethodHandles.lookup().findStatic(System.class, <span class="hljs-string">&quot;currentTimeMillis&quot;</span>, mt);</code></pre>
-<ol>
+<ul>
 <li>获取获得<code>System.out(java.io.PrintStream)</code>字段的方法句柄</li>
-</ol>
+</ul>
 <pre><code class="hljs Java">MethodHandle handle = MethodHandles.lookup().findStaticGetter(System.class, <span class="hljs-string">&quot;out&quot;</span>, PrintStream.class);</code></pre>
-<ol>
+<ul>
 <li>获取<code>String::&lt;init&gt;()</code>的方法句柄</li>
-</ol>
+</ul>
 <pre><code class="hljs Java">MethodType mt = MethodType.methodType(<span class="hljs-keyword">void</span>.class); <span class="hljs-comment">// ()V</span>
 MethodHandle handle = MethodHandles.lookup().findConstructor(String.class, mt);</code></pre>
-<ol>
+<ul>
 <li>获取访问<code>sun.misc.Unsafe.theUnsafe(Unsafe)</code>字段的方法句柄</li>
-</ol>
+</ul>
 <pre><code class="hljs Java"><span class="hljs-comment">// 因为Unsafe.theUnsafe是private，所以要用反射先获取Field解除访问限制之后再进行反反射</span>
 Field field = Unsafe.class.getDeclaredField(<span class="hljs-string">&quot;theUnsafe&quot;</span>);
 field.setAccessible(<span class="hljs-keyword">true</span>);
@@ -284,234 +284,542 @@ ConstantCallSite callSite = <span class="hljs-keyword">new</span> ConstantCallSi
 MethodHandle invoker = callSite.dynamicInvoker(); <span class="hljs-comment">// 获取动态的方法句柄</span>
 <span class="hljs-keyword">assert</span> handle == invoker; <span class="hljs-comment">// 这两个是一个对象</span>
 String str = (String) (invoker.invokeExact(<span class="hljs-string">&quot;hello&quot;</span>, <span class="hljs-number">1</span>, <span class="hljs-number">3</span>));</code></pre>
-<p>三. 引导方法（BootStrap Method，简称BSM）</p>
-<p>在Java类执行中，少不了“动态”的东西。这些动态的东西分为两类：一种是动态计算调用点，一种是动态计算常量。引导方法就是为了它们产生的。</p>
-<pre><code>动态计算常量，由ConstantDynamic表示。它们在JVM使用它们之前被解析，解析时调用的就是它内部的引导方法和它们内置的引导方法参数。
-
-动态计算调用点，也就是inDy的实现。inDy的目标在第一次调用它之前解析调用获得CallSite。
-</code></pre><p>引导方法的声明有一定规则，和它们的使用方式有关：</p>
-<pre><code>如果引导方法用于动态计算常量，则引导方法的前三个参数分别是MethodHandles.Lookup、String、Class对象，分别代表了调用方、名称和常量类型，后面的参数是其他静态参数，返回值需要与Class对象代表的类型保持一致（或者写为Object，只需要运行时返回值可以被强制转换到指定类型就可以）。
-
-如果引导方法用于动态计算调用点，则引导方法的前三个参数分别是MethodHandles.Lookup、String、MethodType对象，分别代表调用方、名称和调用点方法类型，后面的参数是其他静态参数，它的返回值要求是CallSite（通常是ConstantCallSite，当然写成Object也可以，只要保证能被强制类型转换成CallSite就不报错）
-</code></pre><p>下面是一些正确的用于动态计算调用点的引导方法声明：</p>
-<p>CallSite bootstrap(Lookup caller, String name, MethodType type, Object… args)<br>CallSite bootstrap(Lookup caller, String name, MethodType type) // 没有其他静态参数<br>CallSite bootstrap(Lookup caller, Object… nameAndType)<br>CallSite bootstrap(Lookup caller, String name, MethodType type, Object arg) // 只有一个静态参数<br>CallSite bootstrap(Lookup caller, String name, MethodType type, Object… args)<br>CallSite bootstrap(Lookup caller, String name, MethodType type, String… args) // 只允许String静态参数<br>CallSite bootstrap(Lookup caller, String name, MethodType type, String x, int y) // 只允许一个String和一个int作为静态参数传入<br>CallSite bootstrap(Object… args)<br>CallSite bootstrap(Object caller, Object… nameAndTypeWithArgs)</p>
-<p>注意：静态参数允许了动态计算常量传入。<br>四. invokedynamic字节码</p>
-<p>经过前面一系列的铺垫，终于我们要讲inDy该怎么写入了。</p>
-<p>写入inDy字节码需要使用MethodVisitor的方法，visitInvokeDynamicInsn：</p>
-<p>public void visitInvokeDynamicInsn(<br>      final String name,<br>      final String descriptor,<br>      final Handle bootstrapMethodHandle,<br>      final Object… bootstrapMethodArguments)</p>
-<p>它的四个参数分别是名称、方法描述符、引导函数的句柄和传入引导方法的静态参数。名称和描述符都分别对应了引导方法的参数：name（第二个参数）、type（第三个参数）。</p>
-<p>这里面的Handle句柄不等于MethodHandle方法句柄，但是它们也是紧密相关的，它的定义如下：</p>
-<p>public Handle(<br>      final int tag,<br>      final String owner,<br>      final String name,<br>      final String descriptor,<br>      final boolean isInterface)</p>
-<p>可以看到这里的参数和visitMethodInsn的参数基本一样。第一个参数是调用标签，分为9个，它们与方法句柄差不多：</p>
-<pre><code>H_GETFIELD，对应findGetter，字节码getfield，要求isInterface是false
-
-H_GETSTATIC，对应findStaticGetter，字节码getstatic，要求isInterface是false
-
-H_PUTFIELD，对应findSetter，字节码putfield，要求isInterface是false
-
-H_PUTSTATIC，对应findStaticSetter，字节码putstatic，要求isInterface是false
-
-H_INVOKEVIRTUAL，对应findVirtual，字节码invokevirtual
-
-H_INVOKESTATIC，对应findStatic，字节码invokestatic
-
-H_INVOKESPECIAL，对应findSpecial，字节码invokespecial
-
-H_NEWINVOKESPECIAL，对应findConstuctor，字节码invokespecial
-
-H_INVOKEINTERFACE，对应findVirtual，字节码invokeinterface，isInterface是true
-</code></pre><p>下面是个例子，将Arrays::binarySearch(Object[], int, int, Object) -&gt; int用Handle表述：</p>
-<p>new Handle(H_INVOKESTATIC, “java/util/Arrays”, “binarySearch”, “([Ljava/lang/Object;IILjava/lang/Object;)I”, false);</p>
-<p>那么inDy对操作栈做了什么？这就和它的第二个参数，descriptor有关系了。</p>
+<h2 id="引导方法（BootStrap-Method，简称BSM）"><a href="#引导方法（BootStrap-Method，简称BSM）" class="headerlink" title="引导方法（BootStrap Method，简称BSM）"></a>引导方法（BootStrap Method，简称BSM）</h2><p>在Java类执行中，少不了<em>动态</em>的东西。这些动态的东西分为两类：一种是动态计算调用点，一种是动态计算常量。引导方法就是为了它们产生的。</p>
+<ol>
+<li><p>动态计算常量，由<strong>ConstantDynamic</strong>表示。它们在JVM使用它们之前被解析，解析时调用的就是它内部的引导方法和它们内置的引导方法参数。</p>
+</li>
+<li><p>动态计算调用点，也就是inDy的实现。inDy的目标在第一次调用它之前解析调用获得CallSite。</p>
+</li>
+</ol>
+<p>引导方法的声明有一定规则，和它们的使用方式有关：</p>
+<ul>
+<li><p>如果引导方法用于动态计算常量，则引导方法的前三个参数分别是<code>MethodHandles.Lookup、String、Class</code>对象，分别代表了调用方、名称和常量类型，后面的参数是其他静态参数，返回值需要与Class对象代表的类型保持一致（或者写为Object，只需要运行时返回值可以被强制转换到指定类型就可以）。</p>
+</li>
+<li><p>如果引导方法用于动态计算调用点，则引导方法的前三个参数分别是<code>MethodHandles.Lookup、String、MethodType</code>对象，分别代表调用方、名称和调用点方法类型，后面的参数是其他静态参数，它的返回值要求是<code>CallSite</code>（通常是ConstantCallSite，当然写成Object也可以，只要保证能被强制类型转换成CallSite就不报错）</p>
+</li>
+</ul>
+<p>下面是一些正确的用于动态计算调用点的引导方法声明：</p>
+<pre><code class="hljs Java"><span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, String name, MethodType type, Object... args)</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, String name, MethodType type)</span> <span class="hljs-comment">// 没有其他静态参数</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, Object... nameAndType)</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, String name, MethodType type, Object arg)</span> <span class="hljs-comment">// 只有一个静态参数</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, String name, MethodType type, Object... args)</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, String name, MethodType type, String... args)</span> <span class="hljs-comment">// 只允许String静态参数</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Lookup caller, String name, MethodType type, String x, <span class="hljs-keyword">int</span> y)</span> <span class="hljs-comment">// 只允许一个String和一个int作为静态参数传入</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Object... args)</span></span>
+<span class="hljs-function">CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(Object caller, Object... nameAndTypeWithArgs)</span></span></code></pre>
+<blockquote>
+<p>注意：静态参数允许了动态计算常量传入。</p>
+</blockquote>
+<h2 id="invokedynamic字节码"><a href="#invokedynamic字节码" class="headerlink" title="invokedynamic字节码"></a>invokedynamic字节码</h2><p>经过前面一系列的铺垫，终于我们要讲inDy该怎么写入了。</p>
+<p>写入inDy字节码需要使用MethodVisitor的方法，<code>visitInvokeDynamicInsn</code>：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">visitInvokeDynamicInsn</span><span class="hljs-params">(</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String name,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String descriptor,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> Handle bootstrapMethodHandle,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> Object... bootstrapMethodArguments)</span></span></code></pre>
+<p>它的四个参数分别是名称、方法描述符、引导函数的句柄和传入引导方法的静态参数。名称和描述符都分别对应了引导方法的参数：<strong>name</strong>（第二个参数）、<strong>type</strong>（第三个参数）。</p>
+<p>这里面的<code>Handle</code>句柄不等于MethodHandle方法句柄，但是它们也是紧密相关的，它的定义如下：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">Handle</span><span class="hljs-params">(</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> <span class="hljs-keyword">int</span> tag,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String owner,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String name,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String descriptor,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> <span class="hljs-keyword">boolean</span> isInterface)</span></span></code></pre>
+<p>可以看到这里的参数和<code>visitMethodInsn</code>的参数基本一样。第一个参数是调用标签，分为9个，它们与方法句柄差不多：</p>
+<ul>
+<li><p>H_GETFIELD，对应findGetter，字节码getfield，要求isInterface是false</p>
+</li>
+<li><p>H_GETSTATIC，对应findStaticGetter，字节码getstatic，要求isInterface是false</p>
+</li>
+<li><p>H_PUTFIELD，对应findSetter，字节码putfield，要求isInterface是false</p>
+</li>
+<li><p>H_PUTSTATIC，对应findStaticSetter，字节码putstatic，要求isInterface是false</p>
+</li>
+<li><p>H_INVOKEVIRTUAL，对应findVirtual，字节码invokevirtual</p>
+</li>
+<li><p>H_INVOKESTATIC，对应findStatic，字节码invokestatic</p>
+</li>
+<li><p>H_INVOKESPECIAL，对应findSpecial，字节码invokespecial</p>
+</li>
+<li><p>H_NEWINVOKESPECIAL，对应findConstuctor，字节码invokespecial</p>
+</li>
+<li><p>H_INVOKEINTERFACE，对应findVirtual，字节码invokeinterface，isInterface是true</p>
+</li>
+</ul>
+<p>下面是个例子，将<code>Arrays::binarySearch(Object[], int, int, Object) -&gt; int</code>用Handle表述：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/util/Arrays&quot;</span>, <span class="hljs-string">&quot;binarySearch&quot;</span>, <span class="hljs-string">&quot;([Ljava/lang/Object;IILjava/lang/Object;)I&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
+<p>那么inDy对操作栈做了什么？这就和它的第二个参数，<code>descriptor</code>有关系了。</p>
 <p>之前说过，BSM会传入一个MethodType，而这个MethodType是用于描述返回动态调用点目标句柄的。又由于descriptor在字节码中最终会解释成为MethodType，所以能得出一个结论：descriptor决定了BSM返回CallSite内部方法句柄的类型。</p>
-<p>而inDy在JVM的操作正是通过CallSite获取dynamicInvoker进行调用——也就是说，inDy相当于间接调用了一个类型为descriptor的方法。这样我们就不难理解inDy对操作栈干了什么：弹出descriptor指定的一部分参数并压回规定的返回值。</p>
-<p>JVM调用BSM的逻辑可以在java.lang.invoke.BootstrapMethodInvoker找到。</p>
-<p>使用inDy字节码还需要一步操作：你需要让你的类访问MethodHandles.Lookup，因此你需要在类声明时加入一个visitInnerClassInsn（其实不加也不会报错，但是最好加上）：</p>
-<p>cw.visitInnerClass(“java/lang/invoke/MethodHandles$Lookup”, “java/lang/invoke/MethodHandles”, “Lookup”, ACC_PUBLIC | ACC_FINAL | ACC_STATIC);</p>
-<p>下面，是Java中invokedynamic的用法详解：<br>五. lambda表达式</p>
-<p>匿名函数表达式，简称lambda表达式，它在Java 8被加入。它简化了一部分的匿名类，让代码更加简洁。</p>
+<p>而inDy在JVM的操作正是通过CallSite获取dynamicInvoker进行调用——也就是说，inDy相当于间接调用了一个类型为descriptor的方法。这样我们就不难理解inDy对操作栈干了什么：<strong>弹出descriptor指定的一部分参数并压回规定的返回值。</strong></p>
+<blockquote>
+<p>JVM调用BSM的逻辑可以在<code>java.lang.invoke.BootstrapMethodInvoker</code>找到。</p>
+</blockquote>
+<p>使用inDy字节码还需要一步操作：你需要让你的类访问<code>MethodHandles.Lookup</code>，因此你需要在类声明时加入一个<code>visitInnerClassInsn</code>（其实不加也不会报错，但是最好加上）：</p>
+<pre><code class="hljs Java">cw.visitInnerClass(<span class="hljs-string">&quot;java/lang/invoke/MethodHandles$Lookup&quot;</span>, <span class="hljs-string">&quot;java/lang/invoke/MethodHandles&quot;</span>, <span class="hljs-string">&quot;Lookup&quot;</span>, ACC_PUBLIC | ACC_FINAL | ACC_STATIC);</code></pre>
+<h2 id="lambda表达式"><a href="#lambda表达式" class="headerlink" title="lambda表达式"></a>lambda表达式</h2><p>匿名函数表达式，简称lambda表达式，它在Java 8被加入。它简化了一部分的匿名类，让代码更加简洁。</p>
 <p>为了展示它的用法和字节码表示，我们先定义一个接口和一个方法：</p>
-<p>public static void test(StringSupplier lambda) {<br>    System.out.println(lambda.getString());<br>}</p>
-<p>@FunctionalInterface<br>public interface StringSupplier {</p>
-<pre><code>String getString();
-</code></pre><p>}</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(StringSupplier lambda)</span> </span>&#123;
+	System.out.println(lambda.getString());
+&#125;
+
+<span class="hljs-meta">@FunctionalInterface</span>
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">interface</span> <span class="hljs-title">StringSupplier</span> </span>&#123;
+	
+	<span class="hljs-function">String <span class="hljs-title">getString</span><span class="hljs-params">()</span></span>;
+&#125;</code></pre>
 <p>接着，我们使用这个方法：</p>
-<p>public static void main(String[] args) {<br>    test(() -&gt; “hello”);<br>}</p>
-<p>这时，后面的“() -&gt; “hello””被解析成了一个StringSupplier的实现类对象。但是，在字节码中无法自动去生成一个这样的类用于适配它。于是，javac在此处写入了inDy字节码要求动态生成。</p>
-<p>动态生成lambda调用点的引导方法位于java.lang.invoke.LambdaMetafactory：</p>
-<p>// 使用了优化协议的标准版本<br>public static CallSite metafactory(MethodHandles.Lookup caller,<br>                                   String interfaceMethodName,<br>                                   MethodType factoryType,<br>                                   MethodType interfaceMethodType,<br>                                   MethodHandle implementation,<br>                                   MethodType dynamicMethodType)<br>            throws LambdaConversionException<br>// 备用版本<br>public static CallSite altMetafactory(MethodHandles.Lookup caller,<br>                                   String interfaceMethodName,<br>                                   MethodType factoryType,<br>                                   Object… args)<br>            throws LambdaConversionException</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">main</span><span class="hljs-params">(String[] args)</span> </span>&#123;
+	test(() -&gt; <span class="hljs-string">&quot;hello&quot;</span>);
+&#125;</code></pre>
+<p>这时，后面的<code>() -&gt; &quot;hello&quot;</code>被解析成了一个<code>StringSupplier</code>的实现类对象。但是，在字节码中无法自动去生成一个这样的类用于适配它。于是，javac在此处写入了inDy字节码要求动态生成。</p>
+<p>动态生成lambda调用点的引导方法位于<code>java.lang.invoke.LambdaMetafactory</code>：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 使用了优化协议的标准版本</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> CallSite <span class="hljs-title">metafactory</span><span class="hljs-params">(MethodHandles.Lookup caller,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   String interfaceMethodName,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   MethodType factoryType,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   MethodType interfaceMethodType,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   MethodHandle implementation,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   MethodType dynamicMethodType)</span></span>
+<span class="hljs-function">            <span class="hljs-keyword">throws</span> LambdaConversionException</span>
+<span class="hljs-function"><span class="hljs-comment">// 备用版本</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> CallSite <span class="hljs-title">altMetafactory</span><span class="hljs-params">(MethodHandles.Lookup caller,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   String interfaceMethodName,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   MethodType factoryType,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                   Object... args)</span></span>
+<span class="hljs-function">            <span class="hljs-keyword">throws</span> LambdaConversionException</span></code></pre>
 <p>通常情况下，javac生成的lambda都是通过第一个BSM的，这6个参数的意义分别是：</p>
-<pre><code>caller，由JVM提供的查找对象，lambda会使用这个进行动态类创建
-
-interfaceMethodName，lambda实现接口内部需要实现的方法名称
-
-factoryType，要求BSM返回CallSite内部指向方法句柄的方法类型
-
-interfaceMethodType，lambda实现接口内需要实现方法的类型
-
-implementation，实现lambda内部代码功能的方法句柄
-
-dynamicMethodType，实现lambda内部代码功能方法的类型，和interfaceMethodType相同或者是它的更具体的类型
-</code></pre><p>可以看到，为了提供lambda的功能，javac会让inDy字节码连接到另一个方法上去。这种方法不需要我们自己写，它是编译时自动生成的，名称是“lambda$方法名$序号”。上例中，javac动态生成的lambda方法如下：</p>
-<p>private static /<em> synthetic </em>/ String lambda$main$0() {<br>    return “hello”;<br>}</p>
-<p>这些方法都带有private和synthetic的访问标志，是否拥有static访问标志取决于lambda在的方法是否静态和是否使用this对象。</p>
+<ul>
+<li><p><strong>caller</strong>，由JVM提供的查找对象，lambda会使用这个进行动态类创建</p>
+</li>
+<li><p><strong>interfaceMethodName</strong>，lambda实现接口内部需要实现的方法名称</p>
+</li>
+<li><p><strong>factoryType</strong>，要求BSM返回CallSite内部指向方法句柄的方法类型</p>
+</li>
+<li><p><strong>interfaceMethodType</strong>，lambda实现接口内需要实现方法的类型</p>
+</li>
+<li><p><strong>implementation</strong>，实现lambda内部代码功能的方法句柄</p>
+</li>
+<li><p><strong>dynamicMethodType</strong>，实现lambda内部代码功能方法的类型，和interfaceMethodType相同或者是它的更具体的类型</p>
+</li>
+</ul>
+<p>可以看到，为了提供lambda的功能，javac会让inDy字节码连接到另一个方法上去。这种方法不需要我们自己写，它是编译时自动生成的，名称是<code>lambda$方法名$序号</code>。上例中，javac动态生成的lambda方法如下：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-comment">/* synthetic */</span> String lambda$main$<span class="hljs-number">0</span>() &#123;
+	<span class="hljs-keyword">return</span> <span class="hljs-string">&quot;hello&quot;</span>;
+&#125;</code></pre>
+<p>这些方法都带有<code>private</code>和<code>synthetic</code>的访问标志，是否拥有<code>static</code>访问标志取决于lambda在的方法是否静态和是否使用this对象。</p>
 <p>接下来，我们使用这个方法连接到LambdaMetafactory：</p>
-<p>// 注意：这只是个演示！真正的字节码不是这样，这只是一种方式用于理解调用流程！<br>test(LambdaMetafactory.metafactory(<br>    lookup, // JVM提供<br>    “getString”, // lambda实现方法的名称<br>    MethodType.methodType(StringSuppiler.class), // 返回CallSite中的方法类型<br>    MethodType.methodType(String.class), // 需要提供接口方法的类型，描述符()Ljava/lang/String;<br>    MethodHandles.lookup().findStatic(Test.class, “lambda$main$0”, MethodType.methodType(String.class)), // lambda的实现<br>    MethodType.methodType(String.class)) // 指向方法目标的类型，描述符()Ljava/lang/String;<br>    .dynamicInvoker()<br>    .invokeExact()<br>);</p>
-<p>metafactory通过这些参数可以动态创建一个类实现指定的接口获得实现接口的对象。具体而言，它通过asm库（java内置了asm库）在现在的类中动态的生成了内部类，类的名称是“$Lambda$序号”（但是在getClass()获取时名称不是这个，因为这个类被“隐藏”定义，会带上另一个编号）。对于这个例子，生成的内部类像下面这样：</p>
-<p>final /<em> synthetic </em>/ class $Lambda$14 implements StringSupplier { // 序号不重要</p>
-<pre><code>private $Lambda$14() &#123;
-    super();
-&#125;
+<pre><code class="hljs Java"><span class="hljs-comment">// 注意：这只是个演示！真正的字节码不是这样，这只是一种方式用于理解调用流程！</span>
+test(LambdaMetafactory.metafactory(
+	lookup, <span class="hljs-comment">// JVM提供</span>
+	<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// lambda实现方法的名称</span>
+	MethodType.methodType(StringSuppiler.class), <span class="hljs-comment">// 返回CallSite中的方法类型</span>
+	MethodType.methodType(String.class), <span class="hljs-comment">// 需要提供接口方法的类型，描述符()Ljava/lang/String;</span>
+	MethodHandles.lookup().findStatic(Test.class, <span class="hljs-string">&quot;lambda$main$0&quot;</span>, MethodType.methodType(String.class)), <span class="hljs-comment">// lambda的实现</span>
+	MethodType.methodType(String.class)) <span class="hljs-comment">// 指向方法目标的类型，描述符()Ljava/lang/String;</span>
+	.dynamicInvoker()
+	.invokeExact()
+);</code></pre>
+<p><code>metafactory</code>通过这些参数可以动态创建一个类实现指定的接口获得实现接口的对象。具体而言，它通过asm库（java内置了asm库）在现在的类中动态的生成了内部类，类的名称是<code>$Lambda$序号</code>（但是在<code>getClass()</code>获取时名称不是这个，因为这个类被“隐藏”定义，会带上另一个编号）。对于这个例子，生成的内部类像下面这样：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">final</span> <span class="hljs-comment">/* synthetic */</span> <span class="hljs-class"><span class="hljs-keyword">class</span> $<span class="hljs-title">Lambda</span>$14 <span class="hljs-keyword">implements</span> <span class="hljs-title">StringSupplier</span> </span>&#123; <span class="hljs-comment">// 序号不重要</span>
+	
+	<span class="hljs-keyword">private</span> $Lambda$<span class="hljs-number">14</span>() &#123;
+		<span class="hljs-keyword">super</span>();
+	&#125;
 
-public String getString() &#123; // 实现
-    return Test.lambda$main$0(); // 注意这里使用的不是方法句柄
-&#125;
-</code></pre><p>}</p>
-<p>对于这种lambda表达式，生成的类对象永远不变，所以JVM对此进行优化——这种lambda只会生成一个实例，返回的CallSite其实只是返回一个常量（详情可见InnerClassLambdaMetafactory）。</p>
+	<span class="hljs-function"><span class="hljs-keyword">public</span> String <span class="hljs-title">getString</span><span class="hljs-params">()</span> </span>&#123; <span class="hljs-comment">// 实现</span>
+		<span class="hljs-keyword">return</span> Test.lambda$main$<span class="hljs-number">0</span>(); <span class="hljs-comment">// 注意这里使用的不是方法句柄</span>
+	&#125;
+&#125;</code></pre>
+<p>对于这种lambda表达式，生成的类对象永远不变，所以JVM对此进行优化——这种lambda只会生成一个实例，返回的CallSite其实只是返回一个常量（详情可见<code>InnerClassLambdaMetafactory</code>）。</p>
 <p>说回到字节码的写入。之前说过visitInvokeDynamicInsn和BSM的参数一一对应，所以我们可以这样写入：</p>
-<p>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “()LStringSupplier;”, // 要求返回CallSite的类型<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKESTATIC, “Test”, “lambda$main$0”, “()Ljava/lang/String;”, false), // lambda的实现代码<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 1); // 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;]</p>
+<pre><code class="hljs Java">mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// 实现的方法名称</span>
+                          <span class="hljs-string">&quot;()LStringSupplier;&quot;</span>, <span class="hljs-comment">// 要求返回CallSite的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 接口方法的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;lambda$main$0&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// lambda的实现代码</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>) <span class="hljs-comment">// lambda实现方法的类型</span>
+);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(LStringSupplier;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用test</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>); <span class="hljs-comment">// 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;]</span></code></pre>
 <p>除了这种lambda外，还有另一种lambda：它们需要局部变量传入内部。这些局部变量有要求——它们无法被修改，或者叫“等效终态”。下面是一个例子：</p>
-<p>// main方法<br>/<em> final </em>/ String hello = “hello”;<br>test(() -&gt; hello);</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// main方法</span>
+<span class="hljs-comment">/* final */</span> String hello = <span class="hljs-string">&quot;hello&quot;</span>;
+test(() -&gt; hello);</code></pre>
 <p>由于传入了局部变量，lambda的实现方法就需要多加一个参数用于传递这个变量。下面是javac生成的lambda代理实现方法：</p>
-<p>private static /<em> synthetic </em>/ String lambda$main$0(String str) {<br>    return str;<br>}</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-comment">/* synthetic */</span> String lambda$main$<span class="hljs-number">0</span>(String str) &#123;
+	<span class="hljs-keyword">return</span> str;
+&#125;</code></pre>
 <p>但是这个str要怎么透过inDy字节码进行传入？JVM为了解决这个问题，在动态生成的委托类上做了一些操作：让传入的变量先用构造函数存储在字段里，在调用时取出字段值：</p>
-<p>final /<em> synthetic </em>/ class $Lambda$14 implements StringSupplier { // 序号不重要</p>
-<pre><code>private final String arg$0; // 用于储存传入的局部变量，名称以序号命名
+<pre><code class="hljs Java"><span class="hljs-keyword">final</span> <span class="hljs-comment">/* synthetic */</span> <span class="hljs-class"><span class="hljs-keyword">class</span> $<span class="hljs-title">Lambda</span>$14 <span class="hljs-keyword">implements</span> <span class="hljs-title">StringSupplier</span> </span>&#123; <span class="hljs-comment">// 序号不重要</span>
+	
+	<span class="hljs-keyword">private</span> <span class="hljs-keyword">final</span> String arg$<span class="hljs-number">0</span>; <span class="hljs-comment">// 用于储存传入的局部变量，名称以序号命名</span>
 
-private $Lambda$14(String str) &#123;
-    super();
-    arg$0 = str;
-&#125;
+	<span class="hljs-keyword">private</span> $Lambda$<span class="hljs-number">14</span>(String str) &#123;
+		<span class="hljs-keyword">super</span>();
+		arg$<span class="hljs-number">0</span> = str;
+	&#125;
 
-public String getString() &#123; // 实现
-    return Test.lambda$main$0(arg$0);
-&#125;
-</code></pre><p>}</p>
+	<span class="hljs-function"><span class="hljs-keyword">public</span> String <span class="hljs-title">getString</span><span class="hljs-params">()</span> </span>&#123; <span class="hljs-comment">// 实现</span>
+		<span class="hljs-keyword">return</span> Test.lambda$main$<span class="hljs-number">0</span>(arg$<span class="hljs-number">0</span>);
+	&#125;
+&#125;</code></pre>
 <p>但是，这种lambda的CallSite不能返回一个常量——因为我们不能保证局部变量是同一个值！因此，这个CallSite内部指向了动态生成内部类的构造函数。</p>
 <p>接下来，我们用字节码写入一下：</p>
-<p>mv.visitLdcInsn(“hello”);<br>mv.visitVarInsn(ASTORE, 1); // 保存变量到1号位<br>mv.visitVarInsn(ALOAD, 1); // 加载1号位<br>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “(Ljava/lang/String;)LStringSupplier;”, // 要求返回CallSite的类型，注意这里要求传入String局部变量<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKESTATIC, “Test”, “lambda$main$0”, “(Ljava/lang/String;)Ljava/lang/String;”, false), // lambda的实现代码<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 2); // 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;Ljava/lang/String;]</p>
-<p>六. 方法引用</p>
-<p>当lambda内只有一行方法调用时，在特定条件下可以简写为方法引用。它分为不同的类型：</p>
-<ol>
-<li>静态调用</li>
-</ol>
-<p>当方法引用指向一个类中的静态方法时，就是静态调用，类似于：</p>
-<p>public static String hello() {<br>    return “hello”;<br>}</p>
-<p>// …<br>test(Test::hello);</p>
+<pre><code class="hljs Java">mv.visitLdcInsn(<span class="hljs-string">&quot;hello&quot;</span>);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">1</span>); <span class="hljs-comment">// 保存变量到1号位</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// 加载1号位</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// 实现的方法名称</span>
+                          <span class="hljs-string">&quot;(Ljava/lang/String;)LStringSupplier;&quot;</span>, <span class="hljs-comment">// 要求返回CallSite的类型，注意这里要求传入String局部变量</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 接口方法的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;lambda$main$0&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// lambda的实现代码</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>) <span class="hljs-comment">// lambda实现方法的类型（生成内部类实现方法的类型）</span>
+);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(LStringSupplier;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用test</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">2</span>); <span class="hljs-comment">// 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;Ljava/lang/String;]</span></code></pre>
+<h2 id="方法引用"><a href="#方法引用" class="headerlink" title="方法引用"></a>方法引用</h2><p>当lambda内只有一行方法调用时，在特定条件下可以简写为方法引用。它分为不同的类型：</p>
+<h3 id="静态调用"><a href="#静态调用" class="headerlink" title="静态调用"></a>静态调用</h3><p>当方法引用指向一个类中的静态方法时，就是静态调用，类似于：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> String <span class="hljs-title">hello</span><span class="hljs-params">()</span> </span>&#123;
+	<span class="hljs-keyword">return</span> <span class="hljs-string">&quot;hello&quot;</span>;
+&#125;
+
+<span class="hljs-comment">// ...</span>
+test(Test::hello);</code></pre>
 <p>它的实现类似于lambda，但是不同的是，javac编译时不会生成一个新的方法用于lambda定位，而是选择直接指向这个方法：</p>
-<p>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “()LStringSupplier;”, // 要求返回CallSite的类型<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKESTATIC, “Test”, “hello”, “()Ljava/lang/String;”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 1); // 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;]</p>
-<ol>
-<li>对象调用</li>
-</ol>
-<p>当方法引用的目标不是静态的，它就需要使用一个对象用于方法的调用，下面是个例子：</p>
-<p>public String hello() {<br>    return “hello”;<br>}</p>
-<p>// …<br>test(new Test()::hello);</p>
+<pre><code class="hljs Java">mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// 实现的方法名称</span>
+                          <span class="hljs-string">&quot;()LStringSupplier;&quot;</span>, <span class="hljs-comment">// 要求返回CallSite的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 接口方法的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;hello&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// 方法引用的目标</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>) <span class="hljs-comment">// lambda实现方法的类型（生成内部类实现方法的类型）</span>
+);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(LStringSupplier;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用test</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>); <span class="hljs-comment">// 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;]</span></code></pre>
+<h3 id="对象调用"><a href="#对象调用" class="headerlink" title="对象调用"></a>对象调用</h3><p>当方法引用的目标不是静态的，它就需要使用一个对象用于方法的调用，下面是个例子：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> String <span class="hljs-title">hello</span><span class="hljs-params">()</span> </span>&#123;
+	<span class="hljs-keyword">return</span> <span class="hljs-string">&quot;hello&quot;</span>;
+&#125;
+
+<span class="hljs-comment">// ...</span>
+test(<span class="hljs-keyword">new</span> Test()::hello);</code></pre>
 <p>这类似于将局部变量传入了lambda内部，因此这里的inDy字节码是这样写的：</p>
-<p>mv.visitTypeInsn(NEW, “Test”); // 创建Test类对象<br>mv.visitInsn(DUP); // 复制一份<br>mv.visitMethodInsn(INVOKESPECIAL, “Test”, “<init>“, “()V”, false); // 构造函数调用<br>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “(LTest;)LStringSupplier;”, // 要求返回CallSite的类型，注意这里要求传入Test局部变量<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKEVIRTUAL, “Test”, “hello”, “()Ljava/lang/String;”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 1); // 最大操作栈[Test,Test]，局部变量表[[Ljava/lang/String;]</p>
+<pre><code class="hljs Java">mv.visitTypeInsn(NEW, <span class="hljs-string">&quot;Test&quot;</span>); <span class="hljs-comment">// 创建Test类对象</span>
+mv.visitInsn(DUP); <span class="hljs-comment">// 复制一份</span>
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 构造函数调用</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// 实现的方法名称</span>
+                          <span class="hljs-string">&quot;(LTest;)LStringSupplier;&quot;</span>, <span class="hljs-comment">// 要求返回CallSite的类型，注意这里要求传入Test局部变量</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 接口方法的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKEVIRTUAL, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;hello&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// 方法引用的目标</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>) <span class="hljs-comment">// lambda实现方法的类型（生成内部类实现方法的类型）</span>
+);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(LStringSupplier;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用test</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">1</span>); <span class="hljs-comment">// 最大操作栈[Test,Test]，局部变量表[[Ljava/lang/String;]</span></code></pre>
 <p>对象调用的对象没有特殊要求，只需要能获得这个局部变量就可以。方法引用的目标可以是实例方法，也可以是抽象方法（区别在于Handle的标签）。</p>
-<p>由于JVM不能保证传入的局部变量是非空的（例外就是上面的情况：直接新建对象），所以在传入lambda之前，JVM会进行requireNonNull进行检查。也就是说，下面这两种方式等价：</p>
-<p>Test obj;<br>// …<br>// 1<br>test(obj::hello);<br>// 2<br>Objects.requireNonNull(obj);<br>test(() -&gt; obj.hello());</p>
+<p>由于JVM不能保证传入的局部变量是非空的（例外就是上面的情况：直接新建对象），所以在传入lambda之前，JVM会进行<code>requireNonNull</code>进行检查。也就是说，下面这两种方式等价：</p>
+<pre><code class="hljs Java">Test obj;
+<span class="hljs-comment">// ...</span>
+<span class="hljs-comment">// 1</span>
+test(obj::hello);
+<span class="hljs-comment">// 2</span>
+Objects.requireNonNull(obj);
+test(() -&gt; obj.hello());</code></pre>
 <p>上面的方法引用版本的代码可以写为：</p>
-<p>mv.visitVarInsn(ALOAD, 1); // 假设位于1号位<br>mv.visitInsn(DUP); // 复制一份，使用时可以不进行复制<br>mv.visitMethodInsn(INVOKESTATIC, “java/util/Objects”, “requireNonNull”, “(Ljava/lang/Object;)Ljava/lang/Object;”, false);<br>mv.visitInsn(POP); // 弹出栈顶<br>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “(LTest;)LStringSupplier;”, // 要求返回CallSite的类型，注意这里要求传入Test局部变量<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKEVIRTUAL, “Test”, “hello”, “()Ljava/lang/String;”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 1); // 最大操作栈[Test,Test]，局部变量表[[Ljava/lang/String;]</p>
-<p>除了这两种方式外，我们还能使用超类的实例方法，现在假设Test继承于SuperTest，有一个superTest方法，这时javac不会直接引用超类方法，而是生成lambda实现方法在内部调用invokespecial。下面是使用例：</p>
-<p>test(super::superTest);</p>
+<pre><code class="hljs Java">mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// 假设位于1号位</span>
+mv.visitInsn(DUP); <span class="hljs-comment">// 复制一份，使用时可以不进行复制</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/util/Objects&quot;</span>, <span class="hljs-string">&quot;requireNonNull&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Object;)Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(POP); <span class="hljs-comment">// 弹出栈顶</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// 实现的方法名称</span>
+                          <span class="hljs-string">&quot;(LTest;)LStringSupplier;&quot;</span>, <span class="hljs-comment">// 要求返回CallSite的类型，注意这里要求传入Test局部变量</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 接口方法的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKEVIRTUAL, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;hello&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// 方法引用的目标</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>) <span class="hljs-comment">// lambda实现方法的类型（生成内部类实现方法的类型）</span>
+);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(LStringSupplier;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用test</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">1</span>); <span class="hljs-comment">// 最大操作栈[Test,Test]，局部变量表[[Ljava/lang/String;]</span></code></pre>
+<p>除了这两种方式外，我们还能使用超类的实例方法，现在假设Test继承于<code>SuperTest</code>，有一个superTest方法，<strong>这时javac不会直接引用超类方法，而是生成lambda实现方法在内部调用<code>invokespecial</code></strong>。下面是使用例：</p>
+<pre><code class="hljs Java">test(<span class="hljs-keyword">super</span>::superTest);</code></pre>
 <p>javac生成的lambda实现方法是这样的：</p>
-<p>private /<em> synthetic </em>/ String lambda$main$0() {<br>    return super.superTest();<br>}</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">private</span> <span class="hljs-comment">/* synthetic */</span> String lambda$main$<span class="hljs-number">0</span>() &#123;
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">super</span>.superTest();
+&#125;</code></pre>
 <p>接下来的代码省略（因为和上面一样）。</p>
-<p>最后，还有一种对象调用：lambda内部传入了一个对象，我们可以通过这个对象进行调用。这个调用方式和静态调用差不多，只不过Handle的标签是H_INVOKEVIRTUAL，这个也不举例了。</p>
-<ol>
-<li>构造函数调用</li>
-</ol>
-<p>方法引用允许传递构造函数，下面使用了String的无参构造函数传入test内部：</p>
-<p>test(String::new);</p>
-<p>这时，传入的方法句柄是构造函数，对应了Handle中的H_NEWINVOKESPECIAL：</p>
-<p>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “()LStringSupplier;”, // 要求返回CallSite的类型<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_NEWINVOKESPECIAL, “String”, “<init>“, “()V”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 1); // 最大操作栈[LStringSupplier;]，局部变量表[[Ljava/lang/String;]</p>
-<ol>
-<li>数组构造调用</li>
-</ol>
-<p>除了普通的构造函数，数组也可以通过方法引用创建。它只需要一个int作为参数，因此它实现的方法必须只有一个int形参：</p>
-<p>public static void test(ArrayIntSupplier lambda) {<br>    // …<br>}</p>
-<p>@FunctionalInterface<br>public interface ArrayIntSupplier {</p>
-<pre><code>Object[] getString(int count);
-</code></pre><p>}</p>
-<p>// …<br>test(Object[]::new);</p>
+<p>最后，还有一种对象调用：lambda内部传入了一个对象，我们可以通过这个对象进行调用。这个调用方式和静态调用差不多，只不过Handle的标签是<code>H_INVOKEVIRTUAL</code>，这个也不举例了。</p>
+<h3 id="构造函数调用"><a href="#构造函数调用" class="headerlink" title="构造函数调用"></a>构造函数调用</h3><p>方法引用允许传递构造函数，下面使用了String的无参构造函数传入test内部：</p>
+<pre><code class="hljs Java">test(String::<span class="hljs-keyword">new</span>);</code></pre>
+<p>这时，传入的方法句柄是构造函数，对应了Handle中的<code>H_NEWINVOKESPECIAL</code>：</p>
+<pre><code class="hljs Java">mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;getString&quot;</span>, <span class="hljs-comment">// 实现的方法名称</span>
+                          <span class="hljs-string">&quot;()LStringSupplier;&quot;</span>, <span class="hljs-comment">// 要求返回CallSite的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 接口方法的类型</span>
+                          <span class="hljs-keyword">new</span> Handle(H_NEWINVOKESPECIAL, <span class="hljs-string">&quot;String&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// 方法引用的目标</span>
+                          Type.getType(<span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>) <span class="hljs-comment">// lambda实现方法的类型（生成内部类实现方法的类型）</span>
+);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(LStringSupplier;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用test</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>); <span class="hljs-comment">// 最大操作栈[LStringSupplier;]，局部变量表[[Ljava/lang/String;]</span></code></pre>
+<h3 id="数组构造调用"><a href="#数组构造调用" class="headerlink" title="数组构造调用"></a>数组构造调用</h3><p>除了普通的构造函数，数组也可以通过方法引用创建。它只需要一个int作为参数，因此它实现的方法必须只有一个int形参：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(ArrayIntSupplier lambda)</span> </span>&#123;
+	<span class="hljs-comment">// ...</span>
+&#125;
+
+<span class="hljs-meta">@FunctionalInterface</span>
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">interface</span> <span class="hljs-title">ArrayIntSupplier</span> </span>&#123;
+	
+	Object[] getString(<span class="hljs-keyword">int</span> count);
+&#125;
+
+<span class="hljs-comment">// ...</span>
+test(Object[]::<span class="hljs-keyword">new</span>);</code></pre>
 <p>这种方法引用也不是直接指向构造函数的，还是javac生成lambda实现方法并引用的：</p>
-<p>private static /<em> synthetic </em>/ Object[] lambda$main$0(int cnt) {<br>    return new Object[cnt];<br>}</p>
-<p>到此，所有方法引用的写入方式就都介绍完了。<br>七. 字符串连接</p>
-<p>在学习Java的时候，我们就知道Java的String允许用+进行连接。但是，Java没有符号重载，那么字符串是怎么打破这个限制的呢？答案就是javac编译时做了一些“操作”。</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-comment">/* synthetic */</span> Object[] lambda$main$<span class="hljs-number">0</span>(<span class="hljs-keyword">int</span> cnt) &#123;
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> Object[cnt];
+&#125;</code></pre>
+<p>到此，所有方法引用的写入方式就都介绍完了。</p>
+<h2 id="字符串连接"><a href="#字符串连接" class="headerlink" title="字符串连接"></a>字符串连接</h2><p>在学习Java的时候，我们就知道Java的String允许用<code>+</code>进行连接。但是，Java没有符号重载，那么字符串是怎么打破这个限制的呢？答案就是javac编译时做了一些“操作”。</p>
 <p>接下来，我们使用这个例子：</p>
-<p>“hello world at “ + System.currentTimeMillis()</p>
-<p>在Java 8，字符串的连接被自动识别为StringBuilder的链式调用，那么上面的这句话在javac编译之后就变成了这样：</p>
-<p>new StringBuilder().append(“hello world at “).append(System.currentTimeMillis()).toString()</p>
+<pre><code class="hljs Java"><span class="hljs-string">&quot;hello world at &quot;</span> + System.currentTimeMillis()</code></pre>
+<p>在Java 8，字符串的连接被自动识别为<code>StringBuilder</code>的链式调用，那么上面的这句话在javac编译之后就变成了这样：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">new</span> StringBuilder().append(<span class="hljs-string">&quot;hello world at &quot;</span>).append(System.currentTimeMillis()).toString()</code></pre>
 <p>字节码写入如下：</p>
-<p>mv.visitTypeInsn(NEW, “java/lang/StringBuilder”);<br>mv.visitInsn(DUP);<br>mv.visitMethodInsn(INVOKESPECIAL, “java/lang/StringBuilder”, “<init>“, “()V”, false); // 构造函数<br>mv.visitLdcInsn(“hello world at “); // 字符串常量<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/StringBuilder”, “append”, “(Ljava/lang/String;)Ljava/lang/StringBuilder;”, false); // append<br>mv.visitMethodInsn(INVOKESTATIC, “java/lang/System”, “currentTimeMillis”, “()J”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/StringBuilder”, “append”, “(J)Ljava/lang/StringBuilder;”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/StringBuilder”, “toString”, “()Ljava/lang/String;”, false);</p>
+<pre><code class="hljs Java">mv.visitTypeInsn(NEW, <span class="hljs-string">&quot;java/lang/StringBuilder&quot;</span>);
+mv.visitInsn(DUP);
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/StringBuilder&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 构造函数</span>
+mv.visitLdcInsn(<span class="hljs-string">&quot;hello world at &quot;</span>); <span class="hljs-comment">// 字符串常量</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/StringBuilder&quot;</span>, <span class="hljs-string">&quot;append&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)Ljava/lang/StringBuilder;&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// append</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;currentTimeMillis&quot;</span>, <span class="hljs-string">&quot;()J&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/StringBuilder&quot;</span>, <span class="hljs-string">&quot;append&quot;</span>, <span class="hljs-string">&quot;(J)Ljava/lang/StringBuilder;&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/StringBuilder&quot;</span>, <span class="hljs-string">&quot;toString&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
 <p>但是这种方式有两个缺点：一是会生成大量的字节码片段，使类文件膨胀；二是这种调用每次都会生成StringBuilder对象，性能会损失一部分。</p>
-<p>所以，从Java 9开始，字符串连接使用inDy字节码动态调用。它使用的引导方法位于StringConcatFactory。</p>
-<p>public static CallSite makeConcat(MethodHandles.Lookup lookup,<br>                                  String name,<br>                                  MethodType concatType) throws StringConcatException<br>public static CallSite makeConcatWithConstants(MethodHandles.Lookup lookup,<br>                                               String name,<br>                                               MethodType concatType,<br>                                               String recipe,<br>                                               Object… constants)<br>        throws StringConcatException</p>
-<p>makeConcat是makeConcatWithConstants的简化版本，如果没有常量，就用第一个方法，但是javac编译时通常使用第二个方法，所以我们对它进行讲解。</p>
+<p>所以，从Java 9开始，字符串连接使用inDy字节码动态调用。它使用的引导方法位于<code>StringConcatFactory</code>。</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> CallSite <span class="hljs-title">makeConcat</span><span class="hljs-params">(MethodHandles.Lookup lookup,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                  String name,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                  MethodType concatType)</span> <span class="hljs-keyword">throws</span> StringConcatException</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> CallSite <span class="hljs-title">makeConcatWithConstants</span><span class="hljs-params">(MethodHandles.Lookup lookup,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                               String name,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                               MethodType concatType,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                               String recipe,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                               Object... constants)</span></span>
+<span class="hljs-function">        <span class="hljs-keyword">throws</span> StringConcatException</span></code></pre>
+<p><code>makeConcat</code>是<code>makeConcatWithConstants</code>的简化版本，如果没有常量，就用第一个方法，但是javac编译时通常使用第二个方法，所以我们对它进行讲解。</p>
 <p>首先说说方法参数的意义：</p>
-<pre><code>lookup，由JVM提供的查找对象
-
-name，名称，和最后的连接效果没有任何关系，只要不是null都能传入。程序写入常用“makeConcatWithConstants”
-
-concatType，生成CallSite的签名，返回值需要是String，参数列表要和字符串中的变量的数量、类型和位置保持一致
-
-recipe，用于连接字符串的模板，只有两种字符：\u0001代表了这里应该写入变量，\u0002代表这里应该写入常量。\u0001的数量、位置需要和变量保持一致；\u0002的数量、位置要与常量保持一致
-
-constants，字符串中的常量部分，数量和\u0002一致，可以不是String。
-</code></pre><p>它的原理比lambda要简单——它是动态生成了一个MethodHandle存储到CallSite中，因此在执行一次BSM之后它就成为了常量。</p>
-<p>现在我们用它写入字节码：</p>
-<p>mv.visitMethodInsn(INVOKESTATIC, “java/lang/System”, “currentTimeMillis”, “()J”, false); // 先获得字符串中的变量<br>mv.visitInvokeDynamicInsn(“makeConcatWithConstants”, // name随意，只要求不是null<br>                          “(J)Ljava/lang/String;”, // 变量只有一个long，要求返回String<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/StringConcatFactory”, “makeConcatWithConstants”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;”, false), // BSM句柄，注意不定长参数需要写成数组<br>                          “hello world at \u0001” // 模板<br>);</p>
-<p>但是你可能有一个疑问：如果我字符串里面本身有\u0001或者\u0002不就出错了吗？JVM考虑了这个情况，它的解决方案是——提取这一段字符串为常量放到后面。例如下面这个字符串：</p>
-<p>“\u0001 hello” + System.currentTimeMillis()</p>
-<p>它的写入是：</p>
-<p>mv.visitMethodInsn(INVOKESTATIC, “java/lang/System”, “currentTimeMillis”, “()J”, false); // 先获得字符串中的变量<br>mv.visitInvokeDynamicInsn(“makeConcatWithConstants”, // name随意，只要求不是null<br>                          “(J)Ljava/lang/String;”, // 变量只有一个long，要求返回String<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/StringConcatFactory”, “makeConcatWithConstants”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;”, false), // BSM句柄，注意不定长参数需要写成数组<br>                          “\u0002\u0001”, // 模板，常量+变量<br>                          “\u0001 hello” // 常量的值<br>);</p>
-<p>八. 模式匹配</p>
-<p>在Java 17，模式匹配进行了预览。下面就是它的使用例：</p>
-<p>Object o …<br>switch (o) {<br>    case String s:<br>        System.out.println(s.substring(1));<br>        break;<br>    case Number n:<br>        System.out.println(n.longValue());<br>        break;<br>    default:<br>        System.out.println(“Others”);<br>}</p>
-<p>模式匹配之间必须使用break，否则会被提示为非法。</p>
-<p>使用增强型switch可以写成下面形式：</p>
-<p>Object o …<br>switch (o) {<br>    case String s -&gt; System.out.println(s.substring(1));<br>    case Number n -&gt; System.out.println(n.longValue());<br>    default -&gt; System.out.println(“Others”);<br>}</p>
-<p>它的写入和其他switch不同，它使用了inDy用于获得序号，再用这个序号进行lookupswitch。</p>
-<p>它使用的引导方法位于java.lang.runtime.SwitchBootstraps：</p>
-<p>public static CallSite typeSwitch(MethodHandles.Lookup lookup,<br>                                  String invocationName,<br>                                  MethodType invocationType,<br>                                  Object… labels)</p>
-<p>它的参数意义如下：</p>
-<pre><code>lookup，由JVM提供的查找对象
-
-invocationName，名称，和最后的效果没有任何关系，只要不是null都能传入。程序写入常用“typeSwitch”
-
-invocationType，要求第一个参数非基本类型、第二个参数是int、返回值是int的方法类型，也就是说它强制要求传入一个对象和一个int。对象用于检查模式，int用于确定lookupswitch的起始位置（通常是0）。返回值是从第二个参数开始的连续数列中的一个值。
-
-labels，模式匹配目标。可以是Class、Integer或String对象，但是实际上编译时只使用了Class对象。它规定了返回的CallSite的内容：如果输入的对象是这个Class的对象，返回对应的位置。如果输入的对象是null，返回-1。如果输入的对象不存在匹配项，返回labels数组的长度。
-</code></pre><p>通过这个引导方法，上面的代码可以变为：</p>
-<p>Object o …<br>Objects.requireNonNull(o); // 先检查对象是否为null<br>Object tmp = o; // 复制一份，javac是这么做的<br>int startIndex = 0; // 传入的起始lookup偏移<br>// —- 这里有一次栈帧信息写入 —- labelStart<br>// 这里加载了tmp和startIndex<br>switch(#invokedynamic) { // inDy的调用部分省略<br>    case 0:<br>        /<em> labelString </em>/<br>        String s = (String) o;<br>        System.out.println(s.substring(1));<br>        break;<br>    case 1:<br>        /<em> labelNumber </em>/<br>        Number n = (Number) n;<br>        System.out.println(n.longValue());<br>        break;<br>    default:<br>        /<em> labelDefault </em>/<br>        System.out.println(“Others”);<br>}<br>/<em> labelEnd </em>/</p>
-<p>使用字节码写入：</p>
-<p>mv.visitVarInsn(ALOAD, 0); // o<br>mv.visitInsn(DUP); // 复制一份，同样，不复制也行，这是javac的迷惑操作<br>mv.visitMethodInsn(INVOKESTATIC, “java/util/Objects”, “requireNonNull”, “(Ljava/lang/Object;)Ljava/lang/Object;”, false); // 检查null<br>mv.visitInsn(POP); // 弹出栈顶<br>mv.visitVarInsn(ASTORE, 1); // 转存到临时变量tmp<br>mv.visitInsn(ICONST_0); // 常量0<br>mv.visitVarInsn(ISTORE, 2); // 给局部变量startIndex赋值<br>Label labelStart = new Label(); // 用于标记switch块的开始（这样tmp和startIndex不能在结束时访问）<br>mv.visitLabel(labelStart);<br>mv.visitFrame(F_APPEND, 2, new Object[]{ “java/lang/Object”, INTEGER }, 0, null); // 写入栈帧信息<br>mv.visitVarInsn(ALOAD, 1); // 加载对象<br>mv.visitVarInsn(ILOAD, 2); // 加载偏移<br>mv.visitInvokeDynamicInsn(“typeSwitch”, // 无关紧要的名字，只要不是null就行<br>                          “(Ljava/lang/Object;I)I”, // CallSite的方法签名<br>                          new Handle(H_INVOKESTATIC, “java/lang/runtime/SwitchBootstraps”, “typeSwitch”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;”, false), // BSM句柄<br>                          Type.getType(“Ljava/lang/String;”), // 第一个模式<br>                          Type.getType(“Ljava/lang/Number;”) // 第二个模式<br>);<br>Label labelString = new Label(), labelNumber = new Label(), labelDefault = new Label();<br>mv.visitLookupSwitchInsn(labelDefault, new int[]{ 0, 1 }, new Label[]{ labelString, labelNumber }); // 返回值用于lookupSwitch<br>mv.visitLabel(labelString);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitVarInsn(ALOAD, 1); // tmp<br>mv.visitTypeInsn(CHECKCAST, “java/lang/String”); // 强制类型转换<br>mv.visitVarInsn(ASTORE, 3); // 存储到s<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitVarInsn(ALOAD, 3);<br>mv.visitInsn(ICONST_1);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/String”, “substring”, “(I)Ljava/lang/String;”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>Label labelEnd = new Label();<br>mv.visitJumpInsn(GOTO, labelEnd); // break<br>mv.visitLabel(labelNumber);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitVarInsn(ALOAD, 1); // tmp<br>mv.visitTypeInsn(CHECKCAST, “java/lang/Number”); // 强制类型转换<br>mv.visitVarInsn(ASTORE, 4); // 存储到n<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitVarInsn(ALOAD, 4);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/Number”, “longValue”, “()J”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(J)V”, false);<br>mv.visitJumpInsn(GOTO, labelEnd); // break<br>mv.visitLabel(labelDefault);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“Others”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(labelEnd);<br>mv.visitFrame(F_CHOP, 2, null, 0, null); // 清除局部变量<br>mv.visitInsn(RETURN);</p>
 <ul>
-<li>通过SwitchBootstrap可以看出switch以后可能将尽可能使用invokedynamic：typeSwitch支持String输入，也许之后会将String的switch语句修改为这种实现；现在的类内部还有一个enumSwitch但是javac并不能编译出这个引导方法。在下个版本也许会进一步增加细节。<br>九. 自定义引导方法</li>
+<li><p><strong>lookup</strong>，由JVM提供的查找对象</p>
+</li>
+<li><p><strong>name</strong>，名称，和最后的连接效果没有任何关系，只要不是null都能传入。程序写入常用<code>makeConcatWithConstants</code></p>
+</li>
+<li><p><strong>concatType</strong>，生成CallSite的签名，返回值需要是String，参数列表要和字符串中的变量的数量、类型和位置保持一致</p>
+</li>
+<li><p><strong>recipe</strong>，用于连接字符串的模板，只有两种字符：<code>\u0001</code>代表了这里应该写入变量，<code>\u0002</code>代表这里应该写入常量。\u0001的数量、位置需要和变量保持一致；\u0002的数量、位置要与常量保持一致</p>
+</li>
+<li><p><strong>constants</strong>，字符串中的常量部分，数量和\u0002一致，可以不是String。</p>
+</li>
 </ul>
-<p>注意：自定义一个引导方法可能导致你的程序不稳定、出现奇奇怪怪的问题、编译变得极度麻烦。如果不是特殊用途（比如说真正的让一个反编译器完全失效）不要用这个！</p>
+<p>它的原理比lambda要简单——它是动态生成了一个MethodHandle存储到CallSite中，因此在执行一次BSM之后它就成为了常量。</p>
+<p>现在我们用它写入字节码：</p>
+<pre><code class="hljs Java">mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;currentTimeMillis&quot;</span>, <span class="hljs-string">&quot;()J&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 先获得字符串中的变量</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;makeConcatWithConstants&quot;</span>, <span class="hljs-comment">// name随意，只要求不是null</span>
+                          <span class="hljs-string">&quot;(J)Ljava/lang/String;&quot;</span>, <span class="hljs-comment">// 变量只有一个long，要求返回String</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/StringConcatFactory&quot;</span>, <span class="hljs-string">&quot;makeConcatWithConstants&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM句柄，注意不定长参数需要写成数组</span>
+                          <span class="hljs-string">&quot;hello world at \u0001&quot;</span> <span class="hljs-comment">// 模板</span>
+);</code></pre>
+<p>但是你可能有一个疑问：如果我字符串里面本身有\u0001或者\u0002不就出错了吗？JVM考虑了这个情况，它的解决方案是——提取这一段字符串为常量放到后面。例如下面这个字符串：</p>
+<pre><code class="hljs Java"><span class="hljs-string">&quot;\u0001 hello&quot;</span> + System.currentTimeMillis()</code></pre>
+<p>它的写入是：</p>
+<pre><code class="hljs Java">mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;currentTimeMillis&quot;</span>, <span class="hljs-string">&quot;()J&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 先获得字符串中的变量</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;makeConcatWithConstants&quot;</span>, <span class="hljs-comment">// name随意，只要求不是null</span>
+                          <span class="hljs-string">&quot;(J)Ljava/lang/String;&quot;</span>, <span class="hljs-comment">// 变量只有一个long，要求返回String</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/StringConcatFactory&quot;</span>, <span class="hljs-string">&quot;makeConcatWithConstants&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM句柄，注意不定长参数需要写成数组</span>
+                          <span class="hljs-string">&quot;\u0002\u0001&quot;</span>, <span class="hljs-comment">// 模板，常量+变量</span>
+                          <span class="hljs-string">&quot;\u0001 hello&quot;</span> <span class="hljs-comment">// 常量的值</span>
+);</code></pre>
+<h2 id="模式匹配"><a href="#模式匹配" class="headerlink" title="模式匹配"></a>模式匹配</h2><p>在Java 17，模式匹配进行了预览。下面就是它的使用例：</p>
+<pre><code class="hljs Java">Object o ...
+<span class="hljs-keyword">switch</span> (o) &#123;
+	<span class="hljs-keyword">case</span> String s:
+		System.out.println(s.substring(<span class="hljs-number">1</span>));
+		<span class="hljs-keyword">break</span>;
+	<span class="hljs-keyword">case</span> Number n:
+		System.out.println(n.longValue());
+		<span class="hljs-keyword">break</span>;
+	<span class="hljs-keyword">default</span>:
+		System.out.println(<span class="hljs-string">&quot;Others&quot;</span>);
+&#125;</code></pre>
+<p>模式匹配之间必须使用<code>break</code>，否则会被提示为非法。</p>
+<p>使用增强型switch可以写成下面形式：</p>
+<pre><code class="hljs Java">Object o ...
+<span class="hljs-keyword">switch</span> (o) &#123;
+	<span class="hljs-keyword">case</span> String s -&gt; System.out.println(s.substring(<span class="hljs-number">1</span>));
+	<span class="hljs-keyword">case</span> Number n -&gt; System.out.println(n.longValue());
+	<span class="hljs-keyword">default</span> -&gt; System.out.println(<span class="hljs-string">&quot;Others&quot;</span>);
+&#125;</code></pre>
+<p>它的写入和其他switch不同，它使用了inDy用于获得序号，再用这个序号进行<code>lookupswitch</code>。</p>
+<p>它使用的引导方法位于<code>java.lang.runtime.SwitchBootstraps</code>：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> CallSite <span class="hljs-title">typeSwitch</span><span class="hljs-params">(MethodHandles.Lookup lookup,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                  String invocationName,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                  MethodType invocationType,</span></span>
+<span class="hljs-params"><span class="hljs-function">                                  Object... labels)</span></span></code></pre>
+<p>它的参数意义如下：</p>
+<ul>
+<li><p><strong>lookup</strong>，由JVM提供的查找对象</p>
+</li>
+<li><p><strong>invocationName</strong>，名称，和最后的效果没有任何关系，只要不是null都能传入。程序写入常用<code>typeSwitch</code></p>
+</li>
+<li><p><strong>invocationType</strong>，要求第一个参数非基本类型、第二个参数是int、返回值是int的方法类型，也就是说它强制要求传入一个对象和一个int。对象用于检查模式，int用于确定lookupswitch的起始位置（通常是0）。返回值是从第二个参数开始的连续数列中的一个值。</p>
+</li>
+<li><p><strong>labels</strong>，模式匹配目标。可以是Class、Integer或String对象，但是实际上编译时只使用了Class对象。它规定了返回的CallSite的内容：如果输入的对象是这个Class的对象，返回对应的位置。如果输入的对象是null，返回-1。如果输入的对象不存在匹配项，返回labels数组的长度。</p>
+</li>
+</ul>
+<p>通过这个引导方法，上面的代码可以变为：</p>
+<pre><code class="hljs Java">Object o ...
+Objects.requireNonNull(o); <span class="hljs-comment">// 先检查对象是否为null</span>
+Object tmp = o; <span class="hljs-comment">// 复制一份，javac是这么做的</span>
+<span class="hljs-keyword">int</span> startIndex = <span class="hljs-number">0</span>; <span class="hljs-comment">// 传入的起始lookup偏移</span>
+<span class="hljs-comment">// --- 这里有一次栈帧信息写入 --- labelStart</span>
+<span class="hljs-comment">// 这里加载了tmp和startIndex</span>
+<span class="hljs-keyword">switch</span>(#invokedynamic) &#123; <span class="hljs-comment">// inDy的调用部分省略</span>
+	<span class="hljs-keyword">case</span> <span class="hljs-number">0</span>:
+		<span class="hljs-comment">/* labelString */</span>
+		String s = (String) o;
+		System.out.println(s.substring(<span class="hljs-number">1</span>));
+		<span class="hljs-keyword">break</span>;
+	<span class="hljs-keyword">case</span> <span class="hljs-number">1</span>:
+		<span class="hljs-comment">/* labelNumber */</span>
+		Number n = (Number) n;
+		System.out.println(n.longValue());
+		<span class="hljs-keyword">break</span>;
+	<span class="hljs-keyword">default</span>:
+		<span class="hljs-comment">/* labelDefault */</span>
+		System.out.println(<span class="hljs-string">&quot;Others&quot;</span>);
+&#125;
+<span class="hljs-comment">/* labelEnd */</span></code></pre>
+<p>使用字节码写入：</p>
+<pre><code class="hljs Java">mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// o</span>
+mv.visitInsn(DUP); <span class="hljs-comment">// 复制一份，同样，不复制也行，这是javac的迷惑操作</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/util/Objects&quot;</span>, <span class="hljs-string">&quot;requireNonNull&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Object;)Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 检查null</span>
+mv.visitInsn(POP); <span class="hljs-comment">// 弹出栈顶</span>
+mv.visitVarInsn(ASTORE, <span class="hljs-number">1</span>); <span class="hljs-comment">// 转存到临时变量tmp</span>
+mv.visitInsn(ICONST_0); <span class="hljs-comment">// 常量0</span>
+mv.visitVarInsn(ISTORE, <span class="hljs-number">2</span>); <span class="hljs-comment">// 给局部变量startIndex赋值</span>
+Label labelStart = <span class="hljs-keyword">new</span> Label(); <span class="hljs-comment">// 用于标记switch块的开始（这样tmp和startIndex不能在结束时访问）</span>
+mv.visitLabel(labelStart);
+mv.visitFrame(F_APPEND, <span class="hljs-number">2</span>, <span class="hljs-keyword">new</span> Object[]&#123; <span class="hljs-string">&quot;java/lang/Object&quot;</span>, INTEGER &#125;, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>); <span class="hljs-comment">// 写入栈帧信息</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// 加载对象</span>
+mv.visitVarInsn(ILOAD, <span class="hljs-number">2</span>); <span class="hljs-comment">// 加载偏移</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;typeSwitch&quot;</span>, <span class="hljs-comment">// 无关紧要的名字，只要不是null就行</span>
+                          <span class="hljs-string">&quot;(Ljava/lang/Object;I)I&quot;</span>, <span class="hljs-comment">// CallSite的方法签名</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/runtime/SwitchBootstraps&quot;</span>, <span class="hljs-string">&quot;typeSwitch&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;Ljava/lang/String;&quot;</span>), <span class="hljs-comment">// 第一个模式</span>
+                          Type.getType(<span class="hljs-string">&quot;Ljava/lang/Number;&quot;</span>) <span class="hljs-comment">// 第二个模式</span>
+);
+Label labelString = <span class="hljs-keyword">new</span> Label(), labelNumber = <span class="hljs-keyword">new</span> Label(), labelDefault = <span class="hljs-keyword">new</span> Label();
+mv.visitLookupSwitchInsn(labelDefault, <span class="hljs-keyword">new</span> <span class="hljs-keyword">int</span>[]&#123; <span class="hljs-number">0</span>, <span class="hljs-number">1</span> &#125;, <span class="hljs-keyword">new</span> Label[]&#123; labelString, labelNumber &#125;); <span class="hljs-comment">// 返回值用于lookupSwitch</span>
+mv.visitLabel(labelString);
+mv.visitFrame(F_SAME, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>); <span class="hljs-comment">// 栈帧无变化</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// tmp</span>
+mv.visitTypeInsn(CHECKCAST, <span class="hljs-string">&quot;java/lang/String&quot;</span>); <span class="hljs-comment">// 强制类型转换</span>
+mv.visitVarInsn(ASTORE, <span class="hljs-number">3</span>); <span class="hljs-comment">// 存储到s</span>
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">3</span>);
+mv.visitInsn(ICONST_1);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/String&quot;</span>, <span class="hljs-string">&quot;substring&quot;</span>, <span class="hljs-string">&quot;(I)Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+Label labelEnd = <span class="hljs-keyword">new</span> Label();
+mv.visitJumpInsn(GOTO, labelEnd); <span class="hljs-comment">// break</span>
+mv.visitLabel(labelNumber);
+mv.visitFrame(F_SAME, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>); <span class="hljs-comment">// 栈帧无变化</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// tmp</span>
+mv.visitTypeInsn(CHECKCAST, <span class="hljs-string">&quot;java/lang/Number&quot;</span>); <span class="hljs-comment">// 强制类型转换</span>
+mv.visitVarInsn(ASTORE, <span class="hljs-number">4</span>); <span class="hljs-comment">// 存储到n</span>
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">4</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/Number&quot;</span>, <span class="hljs-string">&quot;longValue&quot;</span>, <span class="hljs-string">&quot;()J&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(J)V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitJumpInsn(GOTO, labelEnd); <span class="hljs-comment">// break</span>
+mv.visitLabel(labelDefault);
+mv.visitFrame(F_SAME, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>); <span class="hljs-comment">// 栈帧无变化</span>
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);
+mv.visitLdcInsn(<span class="hljs-string">&quot;Others&quot;</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitLabel(labelEnd);
+mv.visitFrame(F_CHOP, <span class="hljs-number">2</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">0</span>, <span class="hljs-keyword">null</span>); <span class="hljs-comment">// 清除局部变量</span>
+mv.visitInsn(RETURN);</code></pre>
+<blockquote>
+<p>通过SwitchBootstrap可以看出switch以后可能将尽可能使用invokedynamic：typeSwitch支持String输入，也许之后会将String的switch语句修改为这种实现；现在的类内部还有一个enumSwitch但是javac并不能编译出这个引导方法。在下个版本也许会进一步增加细节。</p>
+</blockquote>
+<h2 id="自定义引导方法"><a href="#自定义引导方法" class="headerlink" title="自定义引导方法"></a>自定义引导方法</h2><font color = "red" >注意：自定义一个引导方法可能导致你的程序不稳定、出现奇奇怪怪的问题、编译变得极度麻烦。如果不是特殊用途（比如说真正的让一个反编译器完全失效）不要用这个！</font>
+
 <p>根据上面引导方法的定义和inDy的实现，我们自己也能创造出一个引导方法——只需要满足要求就好。下面就是一个简单的引导方法：</p>
-<p>public static CallSite bootstrap(MethodHandles.Lookup lookup, String name, MethodType type) {<br>    if (!type.returnType().equals(String.class) || type.parameterCount() != 0)<br>        throw new RuntimeException(“Unknown”); // 我们限定只能输入这种方法类型<br>    return new ConstantCallSite(MethodHandles.constant(String.class, “hello”)); // 方法句柄：返回常量hello<br>}</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> CallSite <span class="hljs-title">bootstrap</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, MethodType type)</span> </span>&#123;
+	<span class="hljs-keyword">if</span> (!type.returnType().equals(String.class) || type.parameterCount() != <span class="hljs-number">0</span>)
+		<span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> RuntimeException(<span class="hljs-string">&quot;Unknown&quot;</span>); <span class="hljs-comment">// 我们限定只能输入这种方法类型</span>
+	<span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> ConstantCallSite(MethodHandles.constant(String.class, <span class="hljs-string">&quot;hello&quot;</span>)); <span class="hljs-comment">// 方法句柄：返回常量hello</span>
+&#125;</code></pre>
 <p>接着，我们在我们的方法里面用字节码指向它：</p>
-<p>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”); // System.out<br>mv.visitInvokeDynamicInsn(“testBootstrap”, // 名字，我们定义的引导方法没有使用它<br>                          “()Ljava/lang/String;”, // 方法类型，我们强制规定了使用返回值为String的无参方法<br>                          new Handle(H_INVOKESTATIC, “Test”, “bootstrap”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false) // 引导方法的句柄<br>);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false); // println<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 0); // 最大操作栈是[java/io/PrintStream,java/lang/String] 没有局部变量</p>
+<pre><code class="hljs Java">mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>); <span class="hljs-comment">// System.out</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;testBootstrap&quot;</span>, <span class="hljs-comment">// 名字，我们定义的引导方法没有使用它</span>
+                          <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-comment">// 方法类型，我们强制规定了使用返回值为String的无参方法</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;bootstrap&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>) <span class="hljs-comment">// 引导方法的句柄</span>
+);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// println</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">0</span>); <span class="hljs-comment">// 最大操作栈是[java/io/PrintStream,java/lang/String] 没有局部变量</span></code></pre>
 <p>接下来就是执行，输出结果是：</p>
-<p>hello</p>
+<pre><code class="hljs shell">hello</code></pre>
 <p>这样，我们就成功让字节码指向我们自定义的引导方法。</p>
-<p>全部的代码：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/d82FNcP6jS/">https://paste.ubuntu.com/p/d82FNcP6jS/</a><br>十. 动态常量（Constant Dynamic）</p>
-<p>之前在BSM那里简单提到了动态计算常量，这是JEP 309（Java 11）引入的，在这里我们再进一步深入讲解。</p>
-<p>首先，它的BSM定义和动态调用点的BSM定义方式不同，详情可以看上面。在写入ASM时，它使用的是visitLdcInsn，和普通常量一样。</p>
+<p>全部的代码：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/d82FNcP6jS/">https://paste.ubuntu.com/p/d82FNcP6jS/</a></p>
+<h2 id="动态常量（Constant-Dynamic）"><a href="#动态常量（Constant-Dynamic）" class="headerlink" title="动态常量（Constant Dynamic）"></a>动态常量（Constant Dynamic）</h2><p>之前在BSM那里简单提到了动态计算常量，这是JEP 309（Java 11）引入的，在这里我们再进一步深入讲解。</p>
+<p>首先，它的BSM定义和动态调用点的BSM定义方式不同，详情可以看上面。在写入ASM时，它使用的是<code>visitLdcInsn</code>，和普通常量一样。</p>
 <p>创建一个动态常量使用ConstantDynamic，它的构造函数如下：</p>
-<p>public ConstantDynamic(<br>      final String name,<br>      final String descriptor,<br>      final Handle bootstrapMethod,<br>      final Object… bootstrapMethodArguments)</p>
-<p>可以看到它和visitInvokeDynamicInsn差不多，唯一的区别是：descriptor是类描述符而不是方法描述符。因此，所有动态常量的BSM都不允许传入变量。</p>
-<p>有关于动态常量的BSM都存储到了一个类中：java.lang.invoke.ConstantBootstraps。</p>
-<p>// null的常量，只与type有关<br>public static Object nullConstant(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)<br>// 获得类描述符为name的Class对象，type必须是Class.class<br>public static Class&lt;?&gt; primitiveClass(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)<br>// 获得名称为name的枚举对象<br>public static <E extends Enum<E>&gt; E enumConstant(MethodHandles.Lookup lookup, String name, Class<E> type)<br>// 获得位于declaringClass内部的静态终态字段name<br>public static Object getStaticFinal(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type, Class&lt;?&gt; declaringClass)<br>// 上面的简化版本，令declaringClass与type相同<br>public static Object getStaticFinal(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)<br>// 获得handle使用静态参量args的结果<br>public static Object invoke(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type, MethodHandle handle, Object… args)<br>// 获得字段的VarHandle<br>public static VarHandle fieldVarHandle(MethodHandles.Lookup lookup, String name, Class<VarHandle> type, Class&lt;?&gt; declaringClass, Class&lt;?&gt; fieldType)<br>// 获得静态字段的VarHandle<br>public static VarHandle staticFieldVarHandle(MethodHandles.Lookup lookup, String name, Class<VarHandle> type, Class&lt;?&gt; declaringClass, Class&lt;?&gt; fieldType)<br>// 获得数组的VarHandle<br>public static VarHandle arrayVarHandle(MethodHandles.Lookup lookup, String name, Class<VarHandle> type, Class&lt;?&gt; arrayClass)<br>// 将value显式转换到dstType<br>public static Object explicitCast(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; dstType, Object value) throws ClassCastException</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ConstantDynamic</span><span class="hljs-params">(</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String name,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> String descriptor,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> Handle bootstrapMethod,</span></span>
+<span class="hljs-params"><span class="hljs-function">      <span class="hljs-keyword">final</span> Object... bootstrapMethodArguments)</span></span></code></pre>
+<p>可以看到它和visitInvokeDynamicInsn差不多，唯一的区别是：<code>descriptor</code>是类描述符而不是方法描述符。因此，所有动态常量的BSM都不允许传入变量。</p>
+<p>有关于动态常量的BSM都存储到了一个类中：<code>java.lang.invoke.ConstantBootstraps</code>。</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// null的常量，只与type有关</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object <span class="hljs-title">nullConstant</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得类描述符为name的Class对象，type必须是Class.class</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Class&lt;?&gt; <span class="hljs-title">primitiveClass</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得名称为name的枚举对象</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> &lt;E extends Enum&lt;E&gt;&gt; E <span class="hljs-title">enumConstant</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;E&gt; type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得位于declaringClass内部的静态终态字段name</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object <span class="hljs-title">getStaticFinal</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type, Class&lt;?&gt; declaringClass)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 上面的简化版本，令declaringClass与type相同</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object <span class="hljs-title">getStaticFinal</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得handle使用静态参量args的结果</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object <span class="hljs-title">invoke</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type, MethodHandle handle, Object... args)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得字段的VarHandle</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> VarHandle <span class="hljs-title">fieldVarHandle</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;VarHandle&gt; type, Class&lt;?&gt; declaringClass, Class&lt;?&gt; fieldType)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得静态字段的VarHandle</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> VarHandle <span class="hljs-title">staticFieldVarHandle</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;VarHandle&gt; type, Class&lt;?&gt; declaringClass, Class&lt;?&gt; fieldType)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 获得数组的VarHandle</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> VarHandle <span class="hljs-title">arrayVarHandle</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;VarHandle&gt; type, Class&lt;?&gt; arrayClass)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 将value显式转换到dstType</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object <span class="hljs-title">explicitCast</span><span class="hljs-params">(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; dstType, Object value)</span> <span class="hljs-keyword">throws</span> ClassCastException</span></code></pre>
 <p>使用动态计算常量可以使用其他动态计算常量作为静态参数，这时JVM会倒序一个个计算创建常量。</p>
 <p>下面是个例子：</p>
-<h1 id="ldc-动态常量-System-out"><a href="#ldc-动态常量-System-out" class="headerlink" title="ldc 动态常量 System.out"></a>ldc 动态常量 System.out</h1><p>.println(“hello”);</p>
+<pre><code class="hljs Java">#ldc 动态常量 System.out
+.println(<span class="hljs-string">&quot;hello&quot;</span>);</code></pre>
 <p>字节码写入如下：</p>
-<p>mv.visitLdcInsn(new ConstantDynamic(<br>                “out”, // 字段的名称<br>                “Ljava/io/PrintStream;”, // 字段类型<br>                new Handle(H_INVOKESTATIC, “java/lang/invoke/ConstantBootstraps”, “getStaticFinal”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;”, false), // BSM句柄<br>                Type.getType(“Ljava/lang/System;”) // 字段声明位置<br>));<br>mv.visitLdcInsn(“hello”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);</p>
+<pre><code class="hljs Java">mv.visitLdcInsn(<span class="hljs-keyword">new</span> ConstantDynamic(
+                <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-comment">// 字段的名称</span>
+                <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>, <span class="hljs-comment">// 字段类型</span>
+                <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/ConstantBootstraps&quot;</span>, <span class="hljs-string">&quot;getStaticFinal&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM句柄</span>
+                Type.getType(<span class="hljs-string">&quot;Ljava/lang/System;&quot;</span>) <span class="hljs-comment">// 字段声明位置</span>
+));
+mv.visitLdcInsn(<span class="hljs-string">&quot;hello&quot;</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);</code></pre>
 <p>每个ConstantDynamic都可以复用——你可以使用一个对象传入到不同的LDC里面去。这些对象最终和普通常量一样存储到常量池内部。</p>
+<hr>
 <p>这篇专栏就这些了，只讲了一个字节码，但是内容很多。加上以前的一共191个。</p>
 <p>有错误可以在评论区指出。</p>
 
@@ -613,7 +921,7 @@ labels，模式匹配目标。可以是Class、Integer或String对象，但是�
     <span>TOC</span>
   </div>
   <div class="widget-body">
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84%EF%BC%88Method-Handle%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">方法句柄（Method Handle）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E7%B1%BB%E5%9E%8B%EF%BC%88Method-Type%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">方法类型（Method Type）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E5%B7%B2%E6%9C%89%E7%9A%84%E6%96%B9%E6%B3%95%E4%B8%AD%E6%8F%90%E5%8F%96%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.2.</span> <span class="toc-text">从已有的方法中提取方法句柄</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.3.</span> <span class="toc-text">自定义方法句柄</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.4.</span> <span class="toc-text">使用方法句柄</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E8%B0%83%E7%94%A8%E7%82%B9%EF%BC%88CallSite%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">动态调用点（CallSite）</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84%EF%BC%88Method-Handle%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">方法句柄（Method Handle）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E7%B1%BB%E5%9E%8B%EF%BC%88Method-Type%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">方法类型（Method Type）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E5%B7%B2%E6%9C%89%E7%9A%84%E6%96%B9%E6%B3%95%E4%B8%AD%E6%8F%90%E5%8F%96%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.2.</span> <span class="toc-text">从已有的方法中提取方法句柄</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.3.</span> <span class="toc-text">自定义方法句柄</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.4.</span> <span class="toc-text">使用方法句柄</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E8%B0%83%E7%94%A8%E7%82%B9%EF%BC%88CallSite%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">动态调用点（CallSite）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%95%E5%AF%BC%E6%96%B9%E6%B3%95%EF%BC%88BootStrap-Method%EF%BC%8C%E7%AE%80%E7%A7%B0BSM%EF%BC%89"><span class="toc-number">3.</span> <span class="toc-text">引导方法（BootStrap Method，简称BSM）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#invokedynamic%E5%AD%97%E8%8A%82%E7%A0%81"><span class="toc-number">4.</span> <span class="toc-text">invokedynamic字节码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#lambda%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="toc-number">5.</span> <span class="toc-text">lambda表达式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E5%BC%95%E7%94%A8"><span class="toc-number">6.</span> <span class="toc-text">方法引用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%9D%99%E6%80%81%E8%B0%83%E7%94%A8"><span class="toc-number">6.1.</span> <span class="toc-text">静态调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E8%B0%83%E7%94%A8"><span class="toc-number">6.2.</span> <span class="toc-text">对象调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8"><span class="toc-number">6.3.</span> <span class="toc-text">构造函数调用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E7%BB%84%E6%9E%84%E9%80%A0%E8%B0%83%E7%94%A8"><span class="toc-number">6.4.</span> <span class="toc-text">数组构造调用</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%BF%9E%E6%8E%A5"><span class="toc-number">7.</span> <span class="toc-text">字符串连接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D"><span class="toc-number">8.</span> <span class="toc-text">模式匹配</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E5%BC%95%E5%AF%BC%E6%96%B9%E6%B3%95"><span class="toc-number">9.</span> <span class="toc-text">自定义引导方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E5%B8%B8%E9%87%8F%EF%BC%88Constant-Dynamic%EF%BC%89"><span class="toc-number">10.</span> <span class="toc-text">动态常量（Constant Dynamic）</span></a></li></ol>
   </div>
 </section>
 
@@ -627,7 +935,7 @@ labels，模式匹配目标。可以是Class、Integer或String对象，但是�
     <span>NOTICE</span>
   </div>
   <div class="widget-body">
-    <p>联系我可以发邮件到nickid2018@outlook.com</p>
+    <p>本站所有文章都禁止以任何形式的抄袭或转载哦~</p>
   </div>
 </section>
 
