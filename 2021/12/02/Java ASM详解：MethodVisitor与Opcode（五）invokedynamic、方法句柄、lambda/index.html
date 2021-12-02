@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google-site-verification" content="7KjHJEhAPUbzDXLRtyq2yOGm2KCFVvp5YN588Uf9xNw" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <!-- 百度收录，真tmzz -->
+  <script>
+  (function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https'){
+   bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  
+
+  <title>Java ASM详解：MethodVisitor与Opcode（五）invokedynamic、方法句柄、lambda | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.jpg)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/games">休闲小游戏</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：MethodVisitor与Opcode（五）invokedynamic、方法句柄、lambda</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2021-12-02T00:00:00.000Z" itemprop="datePublished">2021-12-02</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>前四篇专栏已经简要的描述了常用的字节码，这篇专栏将讲述Java 7以来最重要的字节码之一：invokedynamic。</p>
+<h2 id="方法句柄（Method-Handle）"><a href="#方法句柄（Method-Handle）" class="headerlink" title="方法句柄（Method Handle）"></a>方法句柄（Method Handle）</h2><p>方法句柄在Java 7时被引入，位于<code>java.lang.invoke</code>包下。它类似于反射，但与反射不同的是，它的检查在创建阶段就已经结束，而反射需要每次运行时检查，所以在理论上方法引用更快。</p>
+<h3 id="方法类型（Method-Type）"><a href="#方法类型（Method-Type）" class="headerlink" title="方法类型（Method Type）"></a>方法类型（Method Type）</h3><p>方法句柄包含了一个方法的信息——所在的类、名称、参数列表与返回值。为了描述参数列表与返回值，Java引入了一个类————即<code>MethodType</code>，来描述它们。</p>
+<p>它类似于反射使用的<code>getMethod</code>方法，但是它不仅需要参数列表，它还需要返回值。创建一个MethodType可以使用下面的方法：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodType <span class="hljs-title">methodType</span><span class="hljs-params">(Class&lt;?&gt; rtype, Class&lt;?&gt;[] ptypes)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodType <span class="hljs-title">methodType</span><span class="hljs-params">(Class&lt;?&gt; rtype, List&lt;Class&lt;?&gt;&gt; ptypes)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodType <span class="hljs-title">methodType</span><span class="hljs-params">(Class&lt;?&gt; rtype, Class&lt;?&gt; ptype0, Class&lt;?&gt;... ptypes)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodType <span class="hljs-title">methodType</span><span class="hljs-params">(Class&lt;?&gt; rtype)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodType <span class="hljs-title">methodType</span><span class="hljs-params">(Class&lt;?&gt; rtype, Class&lt;?&gt; ptype0)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodType <span class="hljs-title">methodType</span><span class="hljs-params">(Class&lt;?&gt; rtype, MethodType ptypes)</span></span></code></pre>
+<p>这些方法中的<code>rtype</code>参数都代表了返回值类型，<code>ptypes</code>代表了参数类型。</p>
+<p>下面是一个例子：使用MethodType描述<code>Arrays::binarySearch(Object[], int, int, Object) -&gt; int</code></p>
+<pre><code class="hljs Java">MethodType mt = MethodType.methodType(<span class="hljs-keyword">int</span>.class, Object[].class, <span class="hljs-keyword">int</span>.class, <span class="hljs-keyword">int</span>.class, Object.class);</code></pre>
+<h3 id="从已有的方法中提取方法句柄"><a href="#从已有的方法中提取方法句柄" class="headerlink" title="从已有的方法中提取方法句柄"></a>从已有的方法中提取方法句柄</h3><p>为了获取一个方法句柄，最简单的途径就是从一个现成的方法中提取。为了从一个现成的类中提取一个方法句柄，我们需要一个<code>MethodHandles.Lookup</code>对象，这个对象有两种获取方法：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Lookup <span class="hljs-title">lookup</span><span class="hljs-params">()</span> <span class="hljs-comment">// 可查找所有方法</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Lookup <span class="hljs-title">publicLookup</span><span class="hljs-params">()</span> <span class="hljs-comment">// 只可以查找公有方法</span></span></code></pre>
+<p><code>Lookup</code>类提供了以下方法用于查找方法句柄对象：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 查找静态方法</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findStatic</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, MethodType type)</span> <span class="hljs-keyword">throws</span> NoSuchMethodException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找实例方法</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findVirtual</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, MethodType type)</span> <span class="hljs-keyword">throws</span> NoSuchMethodException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找构造函数</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findConstructor</span><span class="hljs-params">(Class&lt;?&gt; refc, MethodType type)</span> <span class="hljs-keyword">throws</span> NoSuchMethodException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找特殊执行的方法（需要特殊指定执行类）</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findSpecial</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, MethodType type, Class&lt;?&gt; specialCaller)</span> <span class="hljs-keyword">throws</span> NoSuchMethodException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找获取字段的方法句柄（不是调用你定义的方法，而是系统内建一个getter的方法句柄）</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findGetter</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, Class&lt;?&gt; type)</span> <span class="hljs-keyword">throws</span> NoSuchFieldException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找设置字段的方法句柄（同上，系统内建setter）</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findSetter</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, Class&lt;?&gt; type)</span> <span class="hljs-keyword">throws</span> NoSuchFieldException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找获取静态字段的方法句柄（同上）</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findStaticGetter</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, Class&lt;?&gt; type)</span> <span class="hljs-keyword">throws</span> NoSuchFieldException, IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 查找设置静态字段的方法句柄（同上）</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">findStaticSetter</span><span class="hljs-params">(Class&lt;?&gt; refc, String name, Class&lt;?&gt; type)</span> <span class="hljs-keyword">throws</span> NoSuchFieldException, IllegalAccessException</span></code></pre>
+<p>可以看到，这些find方法都实现了某个字节码的功能：<code>findStatic</code>与<code>invokestatic</code>进行对应、<code>findGetter</code>与<code>getfield</code>对应等。</p>
+<p>除了查找方法，从一个反射对象反反射也能获得方法句柄对象：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 从Method反反射到一个方法句柄上</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">unreflect</span><span class="hljs-params">(Method m)</span> <span class="hljs-keyword">throws</span> IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 从Method反反射到一个方法句柄上，需要指定特殊执行类</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">unreflectSpecial</span><span class="hljs-params">(Method m, Class&lt;?&gt; specialCaller)</span> <span class="hljs-keyword">throws</span> IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 从Constructor反反射到方法句柄上</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">unreflectConstructor</span><span class="hljs-params">(Constructor&lt;?&gt; c)</span> <span class="hljs-keyword">throws</span> IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 从Field反反射到方法句柄上</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">unreflectGetter</span><span class="hljs-params">(Field f)</span> <span class="hljs-keyword">throws</span> IllegalAccessException</span>
+<span class="hljs-function"><span class="hljs-comment">// 从Field反反射到方法句柄上</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">unreflectSetter</span><span class="hljs-params">(Field f)</span> <span class="hljs-keyword">throws</span> IllegalAccessException</span></code></pre>
+<p>下面是使用例：</p>
+<ol>
+<li>获取<code>System::currentTimeMillis() -&gt; long</code>的方法句柄</li>
+</ol>
+<pre><code class="hljs Java">MethodType mt = MethodType.methodType(<span class="hljs-keyword">long</span>.class); <span class="hljs-comment">// ()J</span>
+MethodHandle handle = MethodHandles.lookup().findStatic(System.class, <span class="hljs-string">&quot;currentTimeMillis&quot;</span>, mt);</code></pre>
+<ol>
+<li>获取获得<code>System.out(java.io.PrintStream)</code>字段的方法句柄</li>
+</ol>
+<pre><code class="hljs Java">MethodHandle handle = MethodHandles.lookup().findStaticGetter(System.class, <span class="hljs-string">&quot;out&quot;</span>, PrintStream.class);</code></pre>
+<ol>
+<li>获取<code>String::&lt;init&gt;()</code>的方法句柄</li>
+</ol>
+<pre><code class="hljs Java">MethodType mt = MethodType.methodType(<span class="hljs-keyword">void</span>.class); <span class="hljs-comment">// ()V</span>
+MethodHandle handle = MethodHandles.lookup().findConstructor(String.class, mt);</code></pre>
+<ol>
+<li>获取访问<code>sun.misc.Unsafe.theUnsafe(Unsafe)</code>字段的方法句柄</li>
+</ol>
+<pre><code class="hljs Java"><span class="hljs-comment">// 因为Unsafe.theUnsafe是private，所以要用反射先获取Field解除访问限制之后再进行反反射</span>
+Field field = Unsafe.class.getDeclaredField(<span class="hljs-string">&quot;theUnsafe&quot;</span>);
+field.setAccessible(<span class="hljs-keyword">true</span>);
+MethodHandle handle = MethodHandles.lookup().unreflectGetter(field);</code></pre>
+<h3 id="自定义方法句柄"><a href="#自定义方法句柄" class="headerlink" title="自定义方法句柄"></a>自定义方法句柄</h3><p>方法句柄不止可以通过查找获取，还可以通过<code>MethodHandles</code>内置的一些方法获取，下面是一部分内置的方法句柄生成器：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 创建数组的方法句柄，需要传入int作为数组长度，返回数组；参数类必须是数组类；对应ANEWARRAY</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">arrayConstructor</span><span class="hljs-params">(Class&lt;?&gt; arrayClass)</span> <span class="hljs-keyword">throws</span> IllegalArgumentException</span>
+<span class="hljs-function"><span class="hljs-comment">// 获取数组长度的方法句柄，需要一个数组传入，返回长度；参数类必须是数组类；对应ARRAYLENGTH</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">arrayLength</span><span class="hljs-params">(Class&lt;?&gt; arrayClass)</span> <span class="hljs-keyword">throws</span> IllegalArgumentException</span>
+<span class="hljs-function"><span class="hljs-comment">// 其他数组操作忽略</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建返回参数自身的方法句柄</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">identity</span><span class="hljs-params">(Class&lt;?&gt; type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建返回常量的方法句柄，实际实现是identity(type).bindTo(value)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">constant</span><span class="hljs-params">(Class&lt;?&gt; type, Object value)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建返回null的方法句柄</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">zero</span><span class="hljs-params">(Class&lt;?&gt; type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 类似zero，但是可以传入参数</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">empty</span><span class="hljs-params">(MethodType type)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建一个方法句柄，用于在第pos参数后插入values个参数传入target</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">insertArguments</span><span class="hljs-params">(MethodHandle target, <span class="hljs-keyword">int</span> pos, Object... values)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建一个方法句柄，用于取消第pos参数后valueTypes的参数传入target</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">dropArguments</span><span class="hljs-params">(MethodHandle target, <span class="hljs-keyword">int</span> pos, List&lt;Class&lt;?&gt;&gt; valueTypes)</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">dropArguments</span><span class="hljs-params">(MethodHandle target, <span class="hljs-keyword">int</span> pos, Class&lt;?&gt;... valueTypes)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建取消target返回的方法句柄</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">dropReturn</span><span class="hljs-params">(MethodHandle target)</span></span>
+<span class="hljs-function"><span class="hljs-comment">// 创建一个方法句柄，用于筛选第pos参数后传入target的方法参数</span></span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MethodHandle <span class="hljs-title">filterArguments</span><span class="hljs-params">(MethodHandle target, <span class="hljs-keyword">int</span> pos, MethodHandle... filters)</span></span></code></pre>
+<p>这些生成器不止包括了基本的创建对象与对象操作，还实现了一部分流程结构，也就是说你可以通过MethodHandles“动态”地创建一个方法片段。</p>
+<h3 id="使用方法句柄"><a href="#使用方法句柄" class="headerlink" title="使用方法句柄"></a>使用方法句柄</h3><p>说了这么多创建方法句柄的方式，我们该怎么使用它呢？MethodHandle提供了两个方法用于执行方法句柄：</p>
+<pre><code class="hljs Java"><span class="hljs-meta">@IntrinsicCandidate</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">native</span> <span class="hljs-meta">@PolymorphicSignature</span> <span class="hljs-function">Object <span class="hljs-title">invoke</span><span class="hljs-params">(Object... args)</span> <span class="hljs-keyword">throws</span> Throwable</span>
+<span class="hljs-function">@IntrinsicCandidate</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">native</span> @PolymorphicSignature Object <span class="hljs-title">invokeExact</span><span class="hljs-params">(Object... args)</span> <span class="hljs-keyword">throws</span> Throwable</span></code></pre>
+<p>这两种调用方式的区别在于参数的类型转换：<code>invokeExact</code>要求参数必须准确对应MethodType定义的参数，而<code>invoke</code>会进行自动转换来尝试对应。</p>
+<p>如果无法对应参数，这两个方法都会抛出<code>WrongMethodTypeException</code>。</p>
+<p>下面给出一个例子，使用上面2.1创建的MethodHandle：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">long</span> time = (<span class="hljs-keyword">long</span>) (handle.invokeExact());</code></pre>
+<p>有些情况下，我们不需要第一个参数变化（实例方法的调用对象/静态方法的第一个参数），这时我们可以用<code>bindTo</code>绑定第一个参数：</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> MethodHandle <span class="hljs-title">bindTo</span><span class="hljs-params">(Object x)</span></span></code></pre>
+<p>下面是使用例：</p>
+<pre><code class="hljs Java">MethodHandle handle = MethodHandles.lookup().findVirtual(PrintStream.class, <span class="hljs-string">&quot;println&quot;</span>, MethodType.methodType(<span class="hljs-keyword">void</span>.class, String.class)).bindTo(System.out);
+handle.invokeExact(<span class="hljs-string">&quot;hello&quot;</span>);</code></pre>
+<p>说完了方法句柄，接下来来看看<code>CallSite</code>。</p>
+<h2 id="动态调用点（CallSite）"><a href="#动态调用点（CallSite）" class="headerlink" title="动态调用点（CallSite）"></a>动态调用点（CallSite）</h2><p>CallSite是一个为了引导<code>invokedynamic</code>字节码指向调用方法的类，通过它的<code>dynamicInvoker</code>方法可以获取一个方法句柄，这个句柄就代表了inDy的<strong>目标</strong>。</p>
+<p>非常量动态调用点允许重新指定调用目标，这时inDy会对目标进行重新连接。</p>
+<p>它有三个子类：ConstantCallSite、MutableCallSite和VolatileCallSite。它们的区别如下：</p>
+<ul>
+<li><p><strong>ConstantCallSite</strong>指向的方法句柄不能修改，也就是永久性的。连接到它的inDy指令会永远绑定这个方法句柄。</p>
+</li>
+<li><p><strong>MutableCallSite</strong>允许修改指向的方法句柄目标，指向目标的行为类似普通字段。它的目标改变是不同步的——当调用目标被另一个线程修改，现在的线程不一定能同步到更新的值。为了强制同步，可以使用MutableCallSite::syncAll。连接到它的inDy指令每次调用都会调用它当前的方法句柄目标。</p>
+</li>
+<li><p><strong>VolatileCallSite</strong>类似MutableCallSite，其指向的目标可以修改。它的行为类似volatile字段，另一个线程修改指向目标会立刻反应到现在的线程，因此不需要syncAll之类的方法保持同步。volatile会造成不可避免的性能损失，所以如果不涉及线程问题最好用MutableCallSite。</p>
+</li>
+</ul>
+<p>下面演示了常量动态调用点的使用方法（此处不涉及inDy）：</p>
+<pre><code class="hljs Java">MethodType type = MethodType.methodType(String.class, <span class="hljs-keyword">int</span>.class, <span class="hljs-keyword">int</span>.class);
+MethodHandle handle = MethodHandles.lookup().findVirtual(String.class, <span class="hljs-string">&quot;substring&quot;</span>, type);
+ConstantCallSite callSite = <span class="hljs-keyword">new</span> ConstantCallSite(handle); <span class="hljs-comment">// 创建常量调用点</span>
+MethodHandle invoker = callSite.dynamicInvoker(); <span class="hljs-comment">// 获取动态的方法句柄</span>
+<span class="hljs-keyword">assert</span> handle == invoker; <span class="hljs-comment">// 这两个是一个对象</span>
+String str = (String) (invoker.invokeExact(<span class="hljs-string">&quot;hello&quot;</span>, <span class="hljs-number">1</span>, <span class="hljs-number">3</span>));</code></pre>
+<p>三. 引导方法（BootStrap Method，简称BSM）</p>
+<p>在Java类执行中，少不了“动态”的东西。这些动态的东西分为两类：一种是动态计算调用点，一种是动态计算常量。引导方法就是为了它们产生的。</p>
+<pre><code>动态计算常量，由ConstantDynamic表示。它们在JVM使用它们之前被解析，解析时调用的就是它内部的引导方法和它们内置的引导方法参数。
+
+动态计算调用点，也就是inDy的实现。inDy的目标在第一次调用它之前解析调用获得CallSite。
+</code></pre><p>引导方法的声明有一定规则，和它们的使用方式有关：</p>
+<pre><code>如果引导方法用于动态计算常量，则引导方法的前三个参数分别是MethodHandles.Lookup、String、Class对象，分别代表了调用方、名称和常量类型，后面的参数是其他静态参数，返回值需要与Class对象代表的类型保持一致（或者写为Object，只需要运行时返回值可以被强制转换到指定类型就可以）。
+
+如果引导方法用于动态计算调用点，则引导方法的前三个参数分别是MethodHandles.Lookup、String、MethodType对象，分别代表调用方、名称和调用点方法类型，后面的参数是其他静态参数，它的返回值要求是CallSite（通常是ConstantCallSite，当然写成Object也可以，只要保证能被强制类型转换成CallSite就不报错）
+</code></pre><p>下面是一些正确的用于动态计算调用点的引导方法声明：</p>
+<p>CallSite bootstrap(Lookup caller, String name, MethodType type, Object… args)<br>CallSite bootstrap(Lookup caller, String name, MethodType type) // 没有其他静态参数<br>CallSite bootstrap(Lookup caller, Object… nameAndType)<br>CallSite bootstrap(Lookup caller, String name, MethodType type, Object arg) // 只有一个静态参数<br>CallSite bootstrap(Lookup caller, String name, MethodType type, Object… args)<br>CallSite bootstrap(Lookup caller, String name, MethodType type, String… args) // 只允许String静态参数<br>CallSite bootstrap(Lookup caller, String name, MethodType type, String x, int y) // 只允许一个String和一个int作为静态参数传入<br>CallSite bootstrap(Object… args)<br>CallSite bootstrap(Object caller, Object… nameAndTypeWithArgs)</p>
+<p>注意：静态参数允许了动态计算常量传入。<br>四. invokedynamic字节码</p>
+<p>经过前面一系列的铺垫，终于我们要讲inDy该怎么写入了。</p>
+<p>写入inDy字节码需要使用MethodVisitor的方法，visitInvokeDynamicInsn：</p>
+<p>public void visitInvokeDynamicInsn(<br>      final String name,<br>      final String descriptor,<br>      final Handle bootstrapMethodHandle,<br>      final Object… bootstrapMethodArguments)</p>
+<p>它的四个参数分别是名称、方法描述符、引导函数的句柄和传入引导方法的静态参数。名称和描述符都分别对应了引导方法的参数：name（第二个参数）、type（第三个参数）。</p>
+<p>这里面的Handle句柄不等于MethodHandle方法句柄，但是它们也是紧密相关的，它的定义如下：</p>
+<p>public Handle(<br>      final int tag,<br>      final String owner,<br>      final String name,<br>      final String descriptor,<br>      final boolean isInterface)</p>
+<p>可以看到这里的参数和visitMethodInsn的参数基本一样。第一个参数是调用标签，分为9个，它们与方法句柄差不多：</p>
+<pre><code>H_GETFIELD，对应findGetter，字节码getfield，要求isInterface是false
+
+H_GETSTATIC，对应findStaticGetter，字节码getstatic，要求isInterface是false
+
+H_PUTFIELD，对应findSetter，字节码putfield，要求isInterface是false
+
+H_PUTSTATIC，对应findStaticSetter，字节码putstatic，要求isInterface是false
+
+H_INVOKEVIRTUAL，对应findVirtual，字节码invokevirtual
+
+H_INVOKESTATIC，对应findStatic，字节码invokestatic
+
+H_INVOKESPECIAL，对应findSpecial，字节码invokespecial
+
+H_NEWINVOKESPECIAL，对应findConstuctor，字节码invokespecial
+
+H_INVOKEINTERFACE，对应findVirtual，字节码invokeinterface，isInterface是true
+</code></pre><p>下面是个例子，将Arrays::binarySearch(Object[], int, int, Object) -&gt; int用Handle表述：</p>
+<p>new Handle(H_INVOKESTATIC, “java/util/Arrays”, “binarySearch”, “([Ljava/lang/Object;IILjava/lang/Object;)I”, false);</p>
+<p>那么inDy对操作栈做了什么？这就和它的第二个参数，descriptor有关系了。</p>
+<p>之前说过，BSM会传入一个MethodType，而这个MethodType是用于描述返回动态调用点目标句柄的。又由于descriptor在字节码中最终会解释成为MethodType，所以能得出一个结论：descriptor决定了BSM返回CallSite内部方法句柄的类型。</p>
+<p>而inDy在JVM的操作正是通过CallSite获取dynamicInvoker进行调用——也就是说，inDy相当于间接调用了一个类型为descriptor的方法。这样我们就不难理解inDy对操作栈干了什么：弹出descriptor指定的一部分参数并压回规定的返回值。</p>
+<p>JVM调用BSM的逻辑可以在java.lang.invoke.BootstrapMethodInvoker找到。</p>
+<p>使用inDy字节码还需要一步操作：你需要让你的类访问MethodHandles.Lookup，因此你需要在类声明时加入一个visitInnerClassInsn（其实不加也不会报错，但是最好加上）：</p>
+<p>cw.visitInnerClass(“java/lang/invoke/MethodHandles$Lookup”, “java/lang/invoke/MethodHandles”, “Lookup”, ACC_PUBLIC | ACC_FINAL | ACC_STATIC);</p>
+<p>下面，是Java中invokedynamic的用法详解：<br>五. lambda表达式</p>
+<p>匿名函数表达式，简称lambda表达式，它在Java 8被加入。它简化了一部分的匿名类，让代码更加简洁。</p>
+<p>为了展示它的用法和字节码表示，我们先定义一个接口和一个方法：</p>
+<p>public static void test(StringSupplier lambda) {<br>    System.out.println(lambda.getString());<br>}</p>
+<p>@FunctionalInterface<br>public interface StringSupplier {</p>
+<pre><code>String getString();
+</code></pre><p>}</p>
+<p>接着，我们使用这个方法：</p>
+<p>public static void main(String[] args) {<br>    test(() -&gt; “hello”);<br>}</p>
+<p>这时，后面的“() -&gt; “hello””被解析成了一个StringSupplier的实现类对象。但是，在字节码中无法自动去生成一个这样的类用于适配它。于是，javac在此处写入了inDy字节码要求动态生成。</p>
+<p>动态生成lambda调用点的引导方法位于java.lang.invoke.LambdaMetafactory：</p>
+<p>// 使用了优化协议的标准版本<br>public static CallSite metafactory(MethodHandles.Lookup caller,<br>                                   String interfaceMethodName,<br>                                   MethodType factoryType,<br>                                   MethodType interfaceMethodType,<br>                                   MethodHandle implementation,<br>                                   MethodType dynamicMethodType)<br>            throws LambdaConversionException<br>// 备用版本<br>public static CallSite altMetafactory(MethodHandles.Lookup caller,<br>                                   String interfaceMethodName,<br>                                   MethodType factoryType,<br>                                   Object… args)<br>            throws LambdaConversionException</p>
+<p>通常情况下，javac生成的lambda都是通过第一个BSM的，这6个参数的意义分别是：</p>
+<pre><code>caller，由JVM提供的查找对象，lambda会使用这个进行动态类创建
+
+interfaceMethodName，lambda实现接口内部需要实现的方法名称
+
+factoryType，要求BSM返回CallSite内部指向方法句柄的方法类型
+
+interfaceMethodType，lambda实现接口内需要实现方法的类型
+
+implementation，实现lambda内部代码功能的方法句柄
+
+dynamicMethodType，实现lambda内部代码功能方法的类型，和interfaceMethodType相同或者是它的更具体的类型
+</code></pre><p>可以看到，为了提供lambda的功能，javac会让inDy字节码连接到另一个方法上去。这种方法不需要我们自己写，它是编译时自动生成的，名称是“lambda$方法名$序号”。上例中，javac动态生成的lambda方法如下：</p>
+<p>private static /<em> synthetic </em>/ String lambda$main$0() {<br>    return “hello”;<br>}</p>
+<p>这些方法都带有private和synthetic的访问标志，是否拥有static访问标志取决于lambda在的方法是否静态和是否使用this对象。</p>
+<p>接下来，我们使用这个方法连接到LambdaMetafactory：</p>
+<p>// 注意：这只是个演示！真正的字节码不是这样，这只是一种方式用于理解调用流程！<br>test(LambdaMetafactory.metafactory(<br>    lookup, // JVM提供<br>    “getString”, // lambda实现方法的名称<br>    MethodType.methodType(StringSuppiler.class), // 返回CallSite中的方法类型<br>    MethodType.methodType(String.class), // 需要提供接口方法的类型，描述符()Ljava/lang/String;<br>    MethodHandles.lookup().findStatic(Test.class, “lambda$main$0”, MethodType.methodType(String.class)), // lambda的实现<br>    MethodType.methodType(String.class)) // 指向方法目标的类型，描述符()Ljava/lang/String;<br>    .dynamicInvoker()<br>    .invokeExact()<br>);</p>
+<p>metafactory通过这些参数可以动态创建一个类实现指定的接口获得实现接口的对象。具体而言，它通过asm库（java内置了asm库）在现在的类中动态的生成了内部类，类的名称是“$Lambda$序号”（但是在getClass()获取时名称不是这个，因为这个类被“隐藏”定义，会带上另一个编号）。对于这个例子，生成的内部类像下面这样：</p>
+<p>final /<em> synthetic </em>/ class $Lambda$14 implements StringSupplier { // 序号不重要</p>
+<pre><code>private $Lambda$14() &#123;
+    super();
+&#125;
+
+public String getString() &#123; // 实现
+    return Test.lambda$main$0(); // 注意这里使用的不是方法句柄
+&#125;
+</code></pre><p>}</p>
+<p>对于这种lambda表达式，生成的类对象永远不变，所以JVM对此进行优化——这种lambda只会生成一个实例，返回的CallSite其实只是返回一个常量（详情可见InnerClassLambdaMetafactory）。</p>
+<p>说回到字节码的写入。之前说过visitInvokeDynamicInsn和BSM的参数一一对应，所以我们可以这样写入：</p>
+<p>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “()LStringSupplier;”, // 要求返回CallSite的类型<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKESTATIC, “Test”, “lambda$main$0”, “()Ljava/lang/String;”, false), // lambda的实现代码<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 1); // 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;]</p>
+<p>除了这种lambda外，还有另一种lambda：它们需要局部变量传入内部。这些局部变量有要求——它们无法被修改，或者叫“等效终态”。下面是一个例子：</p>
+<p>// main方法<br>/<em> final </em>/ String hello = “hello”;<br>test(() -&gt; hello);</p>
+<p>由于传入了局部变量，lambda的实现方法就需要多加一个参数用于传递这个变量。下面是javac生成的lambda代理实现方法：</p>
+<p>private static /<em> synthetic </em>/ String lambda$main$0(String str) {<br>    return str;<br>}</p>
+<p>但是这个str要怎么透过inDy字节码进行传入？JVM为了解决这个问题，在动态生成的委托类上做了一些操作：让传入的变量先用构造函数存储在字段里，在调用时取出字段值：</p>
+<p>final /<em> synthetic </em>/ class $Lambda$14 implements StringSupplier { // 序号不重要</p>
+<pre><code>private final String arg$0; // 用于储存传入的局部变量，名称以序号命名
+
+private $Lambda$14(String str) &#123;
+    super();
+    arg$0 = str;
+&#125;
+
+public String getString() &#123; // 实现
+    return Test.lambda$main$0(arg$0);
+&#125;
+</code></pre><p>}</p>
+<p>但是，这种lambda的CallSite不能返回一个常量——因为我们不能保证局部变量是同一个值！因此，这个CallSite内部指向了动态生成内部类的构造函数。</p>
+<p>接下来，我们用字节码写入一下：</p>
+<p>mv.visitLdcInsn(“hello”);<br>mv.visitVarInsn(ASTORE, 1); // 保存变量到1号位<br>mv.visitVarInsn(ALOAD, 1); // 加载1号位<br>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “(Ljava/lang/String;)LStringSupplier;”, // 要求返回CallSite的类型，注意这里要求传入String局部变量<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKESTATIC, “Test”, “lambda$main$0”, “(Ljava/lang/String;)Ljava/lang/String;”, false), // lambda的实现代码<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 2); // 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;Ljava/lang/String;]</p>
+<p>六. 方法引用</p>
+<p>当lambda内只有一行方法调用时，在特定条件下可以简写为方法引用。它分为不同的类型：</p>
+<ol>
+<li>静态调用</li>
+</ol>
+<p>当方法引用指向一个类中的静态方法时，就是静态调用，类似于：</p>
+<p>public static String hello() {<br>    return “hello”;<br>}</p>
+<p>// …<br>test(Test::hello);</p>
+<p>它的实现类似于lambda，但是不同的是，javac编译时不会生成一个新的方法用于lambda定位，而是选择直接指向这个方法：</p>
+<p>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “()LStringSupplier;”, // 要求返回CallSite的类型<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKESTATIC, “Test”, “hello”, “()Ljava/lang/String;”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 1); // 最大操作栈[StringSupplier]，局部变量表[[Ljava/lang/String;]</p>
+<ol>
+<li>对象调用</li>
+</ol>
+<p>当方法引用的目标不是静态的，它就需要使用一个对象用于方法的调用，下面是个例子：</p>
+<p>public String hello() {<br>    return “hello”;<br>}</p>
+<p>// …<br>test(new Test()::hello);</p>
+<p>这类似于将局部变量传入了lambda内部，因此这里的inDy字节码是这样写的：</p>
+<p>mv.visitTypeInsn(NEW, “Test”); // 创建Test类对象<br>mv.visitInsn(DUP); // 复制一份<br>mv.visitMethodInsn(INVOKESPECIAL, “Test”, “<init>“, “()V”, false); // 构造函数调用<br>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “(LTest;)LStringSupplier;”, // 要求返回CallSite的类型，注意这里要求传入Test局部变量<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKEVIRTUAL, “Test”, “hello”, “()Ljava/lang/String;”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 1); // 最大操作栈[Test,Test]，局部变量表[[Ljava/lang/String;]</p>
+<p>对象调用的对象没有特殊要求，只需要能获得这个局部变量就可以。方法引用的目标可以是实例方法，也可以是抽象方法（区别在于Handle的标签）。</p>
+<p>由于JVM不能保证传入的局部变量是非空的（例外就是上面的情况：直接新建对象），所以在传入lambda之前，JVM会进行requireNonNull进行检查。也就是说，下面这两种方式等价：</p>
+<p>Test obj;<br>// …<br>// 1<br>test(obj::hello);<br>// 2<br>Objects.requireNonNull(obj);<br>test(() -&gt; obj.hello());</p>
+<p>上面的方法引用版本的代码可以写为：</p>
+<p>mv.visitVarInsn(ALOAD, 1); // 假设位于1号位<br>mv.visitInsn(DUP); // 复制一份，使用时可以不进行复制<br>mv.visitMethodInsn(INVOKESTATIC, “java/util/Objects”, “requireNonNull”, “(Ljava/lang/Object;)Ljava/lang/Object;”, false);<br>mv.visitInsn(POP); // 弹出栈顶<br>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “(LTest;)LStringSupplier;”, // 要求返回CallSite的类型，注意这里要求传入Test局部变量<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_INVOKEVIRTUAL, “Test”, “hello”, “()Ljava/lang/String;”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 1); // 最大操作栈[Test,Test]，局部变量表[[Ljava/lang/String;]</p>
+<p>除了这两种方式外，我们还能使用超类的实例方法，现在假设Test继承于SuperTest，有一个superTest方法，这时javac不会直接引用超类方法，而是生成lambda实现方法在内部调用invokespecial。下面是使用例：</p>
+<p>test(super::superTest);</p>
+<p>javac生成的lambda实现方法是这样的：</p>
+<p>private /<em> synthetic </em>/ String lambda$main$0() {<br>    return super.superTest();<br>}</p>
+<p>接下来的代码省略（因为和上面一样）。</p>
+<p>最后，还有一种对象调用：lambda内部传入了一个对象，我们可以通过这个对象进行调用。这个调用方式和静态调用差不多，只不过Handle的标签是H_INVOKEVIRTUAL，这个也不举例了。</p>
+<ol>
+<li>构造函数调用</li>
+</ol>
+<p>方法引用允许传递构造函数，下面使用了String的无参构造函数传入test内部：</p>
+<p>test(String::new);</p>
+<p>这时，传入的方法句柄是构造函数，对应了Handle中的H_NEWINVOKESPECIAL：</p>
+<p>mv.visitInvokeDynamicInsn(“getString”, // 实现的方法名称<br>                          “()LStringSupplier;”, // 要求返回CallSite的类型<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/LambdaMetafactory”, “metafactory”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false), // BSM的句柄<br>                          Type.getType(“()Ljava/lang/String;”), // 接口方法的类型<br>                          new Handle(H_NEWINVOKESPECIAL, “String”, “<init>“, “()V”, false), // 方法引用的目标<br>                          Type.getType(“()Ljava/lang/String;”) // lambda实现方法的类型（生成内部类实现方法的类型）<br>);<br>mv.visitMethodInsn(INVOKESTATIC, “Test”, “test”, “(LStringSupplier;)V”, false); // 调用test<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(1, 1); // 最大操作栈[LStringSupplier;]，局部变量表[[Ljava/lang/String;]</p>
+<ol>
+<li>数组构造调用</li>
+</ol>
+<p>除了普通的构造函数，数组也可以通过方法引用创建。它只需要一个int作为参数，因此它实现的方法必须只有一个int形参：</p>
+<p>public static void test(ArrayIntSupplier lambda) {<br>    // …<br>}</p>
+<p>@FunctionalInterface<br>public interface ArrayIntSupplier {</p>
+<pre><code>Object[] getString(int count);
+</code></pre><p>}</p>
+<p>// …<br>test(Object[]::new);</p>
+<p>这种方法引用也不是直接指向构造函数的，还是javac生成lambda实现方法并引用的：</p>
+<p>private static /<em> synthetic </em>/ Object[] lambda$main$0(int cnt) {<br>    return new Object[cnt];<br>}</p>
+<p>到此，所有方法引用的写入方式就都介绍完了。<br>七. 字符串连接</p>
+<p>在学习Java的时候，我们就知道Java的String允许用+进行连接。但是，Java没有符号重载，那么字符串是怎么打破这个限制的呢？答案就是javac编译时做了一些“操作”。</p>
+<p>接下来，我们使用这个例子：</p>
+<p>“hello world at “ + System.currentTimeMillis()</p>
+<p>在Java 8，字符串的连接被自动识别为StringBuilder的链式调用，那么上面的这句话在javac编译之后就变成了这样：</p>
+<p>new StringBuilder().append(“hello world at “).append(System.currentTimeMillis()).toString()</p>
+<p>字节码写入如下：</p>
+<p>mv.visitTypeInsn(NEW, “java/lang/StringBuilder”);<br>mv.visitInsn(DUP);<br>mv.visitMethodInsn(INVOKESPECIAL, “java/lang/StringBuilder”, “<init>“, “()V”, false); // 构造函数<br>mv.visitLdcInsn(“hello world at “); // 字符串常量<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/StringBuilder”, “append”, “(Ljava/lang/String;)Ljava/lang/StringBuilder;”, false); // append<br>mv.visitMethodInsn(INVOKESTATIC, “java/lang/System”, “currentTimeMillis”, “()J”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/StringBuilder”, “append”, “(J)Ljava/lang/StringBuilder;”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/StringBuilder”, “toString”, “()Ljava/lang/String;”, false);</p>
+<p>但是这种方式有两个缺点：一是会生成大量的字节码片段，使类文件膨胀；二是这种调用每次都会生成StringBuilder对象，性能会损失一部分。</p>
+<p>所以，从Java 9开始，字符串连接使用inDy字节码动态调用。它使用的引导方法位于StringConcatFactory。</p>
+<p>public static CallSite makeConcat(MethodHandles.Lookup lookup,<br>                                  String name,<br>                                  MethodType concatType) throws StringConcatException<br>public static CallSite makeConcatWithConstants(MethodHandles.Lookup lookup,<br>                                               String name,<br>                                               MethodType concatType,<br>                                               String recipe,<br>                                               Object… constants)<br>        throws StringConcatException</p>
+<p>makeConcat是makeConcatWithConstants的简化版本，如果没有常量，就用第一个方法，但是javac编译时通常使用第二个方法，所以我们对它进行讲解。</p>
+<p>首先说说方法参数的意义：</p>
+<pre><code>lookup，由JVM提供的查找对象
+
+name，名称，和最后的连接效果没有任何关系，只要不是null都能传入。程序写入常用“makeConcatWithConstants”
+
+concatType，生成CallSite的签名，返回值需要是String，参数列表要和字符串中的变量的数量、类型和位置保持一致
+
+recipe，用于连接字符串的模板，只有两种字符：\u0001代表了这里应该写入变量，\u0002代表这里应该写入常量。\u0001的数量、位置需要和变量保持一致；\u0002的数量、位置要与常量保持一致
+
+constants，字符串中的常量部分，数量和\u0002一致，可以不是String。
+</code></pre><p>它的原理比lambda要简单——它是动态生成了一个MethodHandle存储到CallSite中，因此在执行一次BSM之后它就成为了常量。</p>
+<p>现在我们用它写入字节码：</p>
+<p>mv.visitMethodInsn(INVOKESTATIC, “java/lang/System”, “currentTimeMillis”, “()J”, false); // 先获得字符串中的变量<br>mv.visitInvokeDynamicInsn(“makeConcatWithConstants”, // name随意，只要求不是null<br>                          “(J)Ljava/lang/String;”, // 变量只有一个long，要求返回String<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/StringConcatFactory”, “makeConcatWithConstants”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;”, false), // BSM句柄，注意不定长参数需要写成数组<br>                          “hello world at \u0001” // 模板<br>);</p>
+<p>但是你可能有一个疑问：如果我字符串里面本身有\u0001或者\u0002不就出错了吗？JVM考虑了这个情况，它的解决方案是——提取这一段字符串为常量放到后面。例如下面这个字符串：</p>
+<p>“\u0001 hello” + System.currentTimeMillis()</p>
+<p>它的写入是：</p>
+<p>mv.visitMethodInsn(INVOKESTATIC, “java/lang/System”, “currentTimeMillis”, “()J”, false); // 先获得字符串中的变量<br>mv.visitInvokeDynamicInsn(“makeConcatWithConstants”, // name随意，只要求不是null<br>                          “(J)Ljava/lang/String;”, // 变量只有一个long，要求返回String<br>                          new Handle(H_INVOKESTATIC, “java/lang/invoke/StringConcatFactory”, “makeConcatWithConstants”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;”, false), // BSM句柄，注意不定长参数需要写成数组<br>                          “\u0002\u0001”, // 模板，常量+变量<br>                          “\u0001 hello” // 常量的值<br>);</p>
+<p>八. 模式匹配</p>
+<p>在Java 17，模式匹配进行了预览。下面就是它的使用例：</p>
+<p>Object o …<br>switch (o) {<br>    case String s:<br>        System.out.println(s.substring(1));<br>        break;<br>    case Number n:<br>        System.out.println(n.longValue());<br>        break;<br>    default:<br>        System.out.println(“Others”);<br>}</p>
+<p>模式匹配之间必须使用break，否则会被提示为非法。</p>
+<p>使用增强型switch可以写成下面形式：</p>
+<p>Object o …<br>switch (o) {<br>    case String s -&gt; System.out.println(s.substring(1));<br>    case Number n -&gt; System.out.println(n.longValue());<br>    default -&gt; System.out.println(“Others”);<br>}</p>
+<p>它的写入和其他switch不同，它使用了inDy用于获得序号，再用这个序号进行lookupswitch。</p>
+<p>它使用的引导方法位于java.lang.runtime.SwitchBootstraps：</p>
+<p>public static CallSite typeSwitch(MethodHandles.Lookup lookup,<br>                                  String invocationName,<br>                                  MethodType invocationType,<br>                                  Object… labels)</p>
+<p>它的参数意义如下：</p>
+<pre><code>lookup，由JVM提供的查找对象
+
+invocationName，名称，和最后的效果没有任何关系，只要不是null都能传入。程序写入常用“typeSwitch”
+
+invocationType，要求第一个参数非基本类型、第二个参数是int、返回值是int的方法类型，也就是说它强制要求传入一个对象和一个int。对象用于检查模式，int用于确定lookupswitch的起始位置（通常是0）。返回值是从第二个参数开始的连续数列中的一个值。
+
+labels，模式匹配目标。可以是Class、Integer或String对象，但是实际上编译时只使用了Class对象。它规定了返回的CallSite的内容：如果输入的对象是这个Class的对象，返回对应的位置。如果输入的对象是null，返回-1。如果输入的对象不存在匹配项，返回labels数组的长度。
+</code></pre><p>通过这个引导方法，上面的代码可以变为：</p>
+<p>Object o …<br>Objects.requireNonNull(o); // 先检查对象是否为null<br>Object tmp = o; // 复制一份，javac是这么做的<br>int startIndex = 0; // 传入的起始lookup偏移<br>// —- 这里有一次栈帧信息写入 —- labelStart<br>// 这里加载了tmp和startIndex<br>switch(#invokedynamic) { // inDy的调用部分省略<br>    case 0:<br>        /<em> labelString </em>/<br>        String s = (String) o;<br>        System.out.println(s.substring(1));<br>        break;<br>    case 1:<br>        /<em> labelNumber </em>/<br>        Number n = (Number) n;<br>        System.out.println(n.longValue());<br>        break;<br>    default:<br>        /<em> labelDefault </em>/<br>        System.out.println(“Others”);<br>}<br>/<em> labelEnd </em>/</p>
+<p>使用字节码写入：</p>
+<p>mv.visitVarInsn(ALOAD, 0); // o<br>mv.visitInsn(DUP); // 复制一份，同样，不复制也行，这是javac的迷惑操作<br>mv.visitMethodInsn(INVOKESTATIC, “java/util/Objects”, “requireNonNull”, “(Ljava/lang/Object;)Ljava/lang/Object;”, false); // 检查null<br>mv.visitInsn(POP); // 弹出栈顶<br>mv.visitVarInsn(ASTORE, 1); // 转存到临时变量tmp<br>mv.visitInsn(ICONST_0); // 常量0<br>mv.visitVarInsn(ISTORE, 2); // 给局部变量startIndex赋值<br>Label labelStart = new Label(); // 用于标记switch块的开始（这样tmp和startIndex不能在结束时访问）<br>mv.visitLabel(labelStart);<br>mv.visitFrame(F_APPEND, 2, new Object[]{ “java/lang/Object”, INTEGER }, 0, null); // 写入栈帧信息<br>mv.visitVarInsn(ALOAD, 1); // 加载对象<br>mv.visitVarInsn(ILOAD, 2); // 加载偏移<br>mv.visitInvokeDynamicInsn(“typeSwitch”, // 无关紧要的名字，只要不是null就行<br>                          “(Ljava/lang/Object;I)I”, // CallSite的方法签名<br>                          new Handle(H_INVOKESTATIC, “java/lang/runtime/SwitchBootstraps”, “typeSwitch”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;”, false), // BSM句柄<br>                          Type.getType(“Ljava/lang/String;”), // 第一个模式<br>                          Type.getType(“Ljava/lang/Number;”) // 第二个模式<br>);<br>Label labelString = new Label(), labelNumber = new Label(), labelDefault = new Label();<br>mv.visitLookupSwitchInsn(labelDefault, new int[]{ 0, 1 }, new Label[]{ labelString, labelNumber }); // 返回值用于lookupSwitch<br>mv.visitLabel(labelString);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitVarInsn(ALOAD, 1); // tmp<br>mv.visitTypeInsn(CHECKCAST, “java/lang/String”); // 强制类型转换<br>mv.visitVarInsn(ASTORE, 3); // 存储到s<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitVarInsn(ALOAD, 3);<br>mv.visitInsn(ICONST_1);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/String”, “substring”, “(I)Ljava/lang/String;”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>Label labelEnd = new Label();<br>mv.visitJumpInsn(GOTO, labelEnd); // break<br>mv.visitLabel(labelNumber);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitVarInsn(ALOAD, 1); // tmp<br>mv.visitTypeInsn(CHECKCAST, “java/lang/Number”); // 强制类型转换<br>mv.visitVarInsn(ASTORE, 4); // 存储到n<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitVarInsn(ALOAD, 4);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/lang/Number”, “longValue”, “()J”, false);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(J)V”, false);<br>mv.visitJumpInsn(GOTO, labelEnd); // break<br>mv.visitLabel(labelDefault);<br>mv.visitFrame(F_SAME, 0, null, 0, null); // 栈帧无变化<br>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”);<br>mv.visitLdcInsn(“Others”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);<br>mv.visitLabel(labelEnd);<br>mv.visitFrame(F_CHOP, 2, null, 0, null); // 清除局部变量<br>mv.visitInsn(RETURN);</p>
+<ul>
+<li>通过SwitchBootstrap可以看出switch以后可能将尽可能使用invokedynamic：typeSwitch支持String输入，也许之后会将String的switch语句修改为这种实现；现在的类内部还有一个enumSwitch但是javac并不能编译出这个引导方法。在下个版本也许会进一步增加细节。<br>九. 自定义引导方法</li>
+</ul>
+<p>注意：自定义一个引导方法可能导致你的程序不稳定、出现奇奇怪怪的问题、编译变得极度麻烦。如果不是特殊用途（比如说真正的让一个反编译器完全失效）不要用这个！</p>
+<p>根据上面引导方法的定义和inDy的实现，我们自己也能创造出一个引导方法——只需要满足要求就好。下面就是一个简单的引导方法：</p>
+<p>public static CallSite bootstrap(MethodHandles.Lookup lookup, String name, MethodType type) {<br>    if (!type.returnType().equals(String.class) || type.parameterCount() != 0)<br>        throw new RuntimeException(“Unknown”); // 我们限定只能输入这种方法类型<br>    return new ConstantCallSite(MethodHandles.constant(String.class, “hello”)); // 方法句柄：返回常量hello<br>}</p>
+<p>接着，我们在我们的方法里面用字节码指向它：</p>
+<p>mv.visitFieldInsn(GETSTATIC, “java/lang/System”, “out”, “Ljava/io/PrintStream;”); // System.out<br>mv.visitInvokeDynamicInsn(“testBootstrap”, // 名字，我们定义的引导方法没有使用它<br>                          “()Ljava/lang/String;”, // 方法类型，我们强制规定了使用返回值为String的无参方法<br>                          new Handle(H_INVOKESTATIC, “Test”, “bootstrap”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;”, false) // 引导方法的句柄<br>);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false); // println<br>mv.visitInsn(RETURN);<br>mv.visitMaxs(2, 0); // 最大操作栈是[java/io/PrintStream,java/lang/String] 没有局部变量</p>
+<p>接下来就是执行，输出结果是：</p>
+<p>hello</p>
+<p>这样，我们就成功让字节码指向我们自定义的引导方法。</p>
+<p>全部的代码：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/d82FNcP6jS/">https://paste.ubuntu.com/p/d82FNcP6jS/</a><br>十. 动态常量（Constant Dynamic）</p>
+<p>之前在BSM那里简单提到了动态计算常量，这是JEP 309（Java 11）引入的，在这里我们再进一步深入讲解。</p>
+<p>首先，它的BSM定义和动态调用点的BSM定义方式不同，详情可以看上面。在写入ASM时，它使用的是visitLdcInsn，和普通常量一样。</p>
+<p>创建一个动态常量使用ConstantDynamic，它的构造函数如下：</p>
+<p>public ConstantDynamic(<br>      final String name,<br>      final String descriptor,<br>      final Handle bootstrapMethod,<br>      final Object… bootstrapMethodArguments)</p>
+<p>可以看到它和visitInvokeDynamicInsn差不多，唯一的区别是：descriptor是类描述符而不是方法描述符。因此，所有动态常量的BSM都不允许传入变量。</p>
+<p>有关于动态常量的BSM都存储到了一个类中：java.lang.invoke.ConstantBootstraps。</p>
+<p>// null的常量，只与type有关<br>public static Object nullConstant(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)<br>// 获得类描述符为name的Class对象，type必须是Class.class<br>public static Class&lt;?&gt; primitiveClass(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)<br>// 获得名称为name的枚举对象<br>public static <E extends Enum<E>&gt; E enumConstant(MethodHandles.Lookup lookup, String name, Class<E> type)<br>// 获得位于declaringClass内部的静态终态字段name<br>public static Object getStaticFinal(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type, Class&lt;?&gt; declaringClass)<br>// 上面的简化版本，令declaringClass与type相同<br>public static Object getStaticFinal(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type)<br>// 获得handle使用静态参量args的结果<br>public static Object invoke(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; type, MethodHandle handle, Object… args)<br>// 获得字段的VarHandle<br>public static VarHandle fieldVarHandle(MethodHandles.Lookup lookup, String name, Class<VarHandle> type, Class&lt;?&gt; declaringClass, Class&lt;?&gt; fieldType)<br>// 获得静态字段的VarHandle<br>public static VarHandle staticFieldVarHandle(MethodHandles.Lookup lookup, String name, Class<VarHandle> type, Class&lt;?&gt; declaringClass, Class&lt;?&gt; fieldType)<br>// 获得数组的VarHandle<br>public static VarHandle arrayVarHandle(MethodHandles.Lookup lookup, String name, Class<VarHandle> type, Class&lt;?&gt; arrayClass)<br>// 将value显式转换到dstType<br>public static Object explicitCast(MethodHandles.Lookup lookup, String name, Class&lt;?&gt; dstType, Object value) throws ClassCastException</p>
+<p>使用动态计算常量可以使用其他动态计算常量作为静态参数，这时JVM会倒序一个个计算创建常量。</p>
+<p>下面是个例子：</p>
+<h1 id="ldc-动态常量-System-out"><a href="#ldc-动态常量-System-out" class="headerlink" title="ldc 动态常量 System.out"></a>ldc 动态常量 System.out</h1><p>.println(“hello”);</p>
+<p>字节码写入如下：</p>
+<p>mv.visitLdcInsn(new ConstantDynamic(<br>                “out”, // 字段的名称<br>                “Ljava/io/PrintStream;”, // 字段类型<br>                new Handle(H_INVOKESTATIC, “java/lang/invoke/ConstantBootstraps”, “getStaticFinal”, “(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;”, false), // BSM句柄<br>                Type.getType(“Ljava/lang/System;”) // 字段声明位置<br>));<br>mv.visitLdcInsn(“hello”);<br>mv.visitMethodInsn(INVOKEVIRTUAL, “java/io/PrintStream”, “println”, “(Ljava/lang/String;)V”, false);</p>
+<p>每个ConstantDynamic都可以复用——你可以使用一个对象传入到不同的LDC里面去。这些对象最终和普通常量一样存储到常量池内部。</p>
+<p>这篇专栏就这些了，只讲了一个字节码，但是内容很多。加上以前的一共191个。</p>
+<p>有错误可以在评论区指出。</p>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2021/11/21/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AMethodVisitor%E4%B8%8EOpcode%EF%BC%88%E5%9B%9B%EF%BC%89%E5%85%B6%E4%BB%96%E6%B5%81%E7%A8%8B%E7%BB%93%E6%9E%84/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：MethodVisitor与Opcode（四）其他流程结构</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+    <div class="valine-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <div id="valine_thread" class="valine-thread"></div>
+    </div>
+    <script type="text/javascript" src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script type="text/javascript" src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script type="text/javascript">
+      new Valine({
+        el: "#valine_thread",
+        appId: "mW2DHhwzDNYk9Gk1hsi4XJV7-gzGzoHsz",
+        appKey: "reCUh7XTXRmlDsR3YfbjreRb",
+        avatar: "mp",
+        placeholder: "发一条友善的评论吧~~",
+        notify: true,
+        visitor: true,
+        pageSize: 10,
+      });
+    </script>
+  
+
+  
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>8</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84%EF%BC%88Method-Handle%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">方法句柄（Method Handle）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E7%B1%BB%E5%9E%8B%EF%BC%88Method-Type%EF%BC%89"><span class="toc-number">1.1.</span> <span class="toc-text">方法类型（Method Type）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E5%B7%B2%E6%9C%89%E7%9A%84%E6%96%B9%E6%B3%95%E4%B8%AD%E6%8F%90%E5%8F%96%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.2.</span> <span class="toc-text">从已有的方法中提取方法句柄</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.3.</span> <span class="toc-text">自定义方法句柄</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84"><span class="toc-number">1.4.</span> <span class="toc-text">使用方法句柄</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E8%B0%83%E7%94%A8%E7%82%B9%EF%BC%88CallSite%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">动态调用点（CallSite）</span></a></li></ol>
+  </div>
+</section>
+
+
+      
+<section class="widet-notice widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-notice" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M512 945.02305225v28.15620663a24.27259221 24.27259221 0 0 1-24.27259221 24.27259335H394.0352a48.54518557 48.54518557 0 0 1-41.74885888-23.78714112l-110.68302222-184.47170332a132.04290333 132.04290333 0 0 1-17.47626667-48.54518557h118.4502511a200.97706667 200.97706667 0 0 1 76.21594113 14.56355556l20.38897777 133.49925888a48.54518557 48.54518557 0 0 0 36.40888888 27.67075555l16.01991111 2.91271112a24.27259221 24.27259221 0 0 1 20.38897778 25.72894889zM997.45185223 463.45481443a194.18074112 194.18074112 0 0 1-38.8361489 116.50844445 24.75804445 24.75804445 0 0 1-36.4088889 0l-34.95253333-34.95253333a24.27259221 24.27259221 0 0 1-2.91271111-30.58346667 97.09036999 97.09036999 0 0 0 0-106.79940665 24.27259221 24.27259221 0 0 1 2.91271111-30.58346666l34.95253333-34.95253334a24.75804445 24.75804445 0 0 1 18.93262223-7.28177777 26.2144 26.2144 0 0 1 17.47626667 9.70903665A194.18074112 194.18074112 0 0 1 997.45185223 463.45481443z m-194.18074112-388.36148111v776.72296335a48.54518557 48.54518557 0 0 1-48.54518556 48.54518443h-28.64165888a48.54518557 48.54518557 0 0 1-33.98163001-14.07810332l-145.63555556-143.20829668A291.27111111 291.27111111 0 0 0 342.57730333 657.63555556H172.18370333a145.63555556 145.63555556 0 0 1-145.63555556-145.63555556v-97.09036999a145.63555556 145.63555556 0 0 1 145.63555556-145.63555556h170.3936a291.27111111 291.27111111 0 0 0 206.31703779-85.43952668l145.63555555-143.20829554a48.54518557 48.54518557 0 0 1 33.98162888-14.07810446H754.72592555a48.54518557 48.54518557 0 0 1 48.54518556 48.54518555z" fill="currentColor"></path>
+</svg>
+    <span>NOTICE</span>
+  </div>
+  <div class="widget-body">
+    <p>联系我可以发邮件到nickid2018@outlook.com</p>
+  </div>
+</section>
+
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (8)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://space.bilibili.com/443879411/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" class="icon icon-github"><path d="M800.768 237.216h-51.264l44.832-44.832c19.232-19.232 19.232-57.664 0-76.864s-57.664-19.232-76.864 0l-128.128 121.728h-153.76L307.456 115.52c-19.232-19.232-57.664-19.232-76.864 0s-19.232 57.664 0 76.864l44.832 44.832H224.16C134.464 237.216 64 307.68 64 397.376v345.952c0 96.096 70.464 166.56 160.16 166.56h570.144c89.696 0 160.16-70.464 160.16-160.16V397.376c6.4-89.696-64.064-160.16-153.76-160.16z m44.864 506.112a57.44 57.44 0 0 1-57.664 57.664H230.624a57.44 57.44 0 0 1-57.664-57.664v-339.52c0-32.032 25.632-57.664 57.664-57.664h557.344c32.032 0 57.664 25.632 57.664 57.664v339.52zM345.952 461.44a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z m333.12 0a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z"></path></svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2021 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>
