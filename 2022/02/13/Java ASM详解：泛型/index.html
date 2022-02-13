@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google-site-verification" content="7KjHJEhAPUbzDXLRtyq2yOGm2KCFVvp5YN588Uf9xNw" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <!-- 百度收录，真tmzz -->
+  <script>
+  (function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https'){
+   bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  
+
+  <title>Java ASM详解：泛型 | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.png)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/games">休闲小游戏</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：泛型</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2022-02-13T00:00:00.000Z" itemprop="datePublished">2022-02-13</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>在之前的字节码学习中，我们都是对有确定类型的数据/类进行操作。可是，Java有着一种“黑”操作用于更好的检查对象类型：在Java 5加入的泛型。</p>
+<h2 id="泛型的声明"><a href="#泛型的声明" class="headerlink" title="泛型的声明"></a>泛型的声明</h2><p>在正式导入泛型声明之前，先说说泛型描述符。</p>
+<p>普通的非基本类型的描述符的命名方法是<code>L+类名+;</code>，但是泛型不能以这种方式命名——它需要和普通的描述符有区别以便于区分。所以，它的命名要求是<code>T+泛型名称+;</code>。所以一个命名为<code>T</code>的泛型的描述符是<code>TT;</code>。接下来说回到声明。</p>
+<p>每个泛型在使用之前必须经过声明，声明的位置是类、方法、字段、内部类等的声明部分。如果非静态方法或字段使用的泛型在它们所在的类中被声明过了，那么在它们声明时这个泛型不需要二次声明。</p>
+<p>泛型要求必须继承于一个确切的类，对于没有写<code>extends</code>限定的泛型，它们默认继承于<code>Object</code>。</p>
+<p>在字节码中，泛型的声明要用尖括号包围。每对泛型用冒号隔开，冒号前方是类型参数名称，后方是类型参数的超类或另一个已声明的类型参数。如果类型参数继承于一个接口，那么应该使用双冒号。（可以不用遵守这个约定，冒号数量不影响解析）</p>
+<p>泛型与泛型之间不需要多余的分隔符分割它们的定义，这是因为描述符都以分号结尾从而阻止二义性的解析。（这里也就说明了为什么基本类型不能当类型参数的限制符号，它们的描述符不带分号会造成不可阻止的二义性解析）</p>
+<p>下面是泛型声明的例子：</p>
+<pre><code class="hljs Java">T extends InputStream
+	&lt;T:Ljava/io/InputStream;&gt;
+T extends Serializable
+	&lt;T::Ljava/io/Serializable;&gt;
+T, E extends T
+	&lt;T:Ljava/lang/Object;E:TT;&gt;</code></pre>
+<p>但是上面的几条规范不能包括我们使用的所有情况。就比如下面的例子：</p>
+<pre><code class="hljs Java">T extends Enum&lt;T&gt;</code></pre>
+<p>类型参数的超类具有类型参数的使用，这时我们需要写出超类类型参数的位置和限定关系。</p>
+<p>对于一个使用了类型参数的类，它需要在类名之后分号之前用尖括号表示各个类型参数的配置。每个参数都可以是确切的类、声明过的类型参数或通配符。和上面的声明一样，因为描述符以分号结尾，不会产生二义性解析，因此不需要额外分隔符用于分割定义。</p>
+<p>对于上面的例子，它的声明就可以表示成：</p>
+<pre><code class="hljs Java">&lt;T:Ljava/lang/Enum&lt;TT;&gt;;&gt;</code></pre>
+<p>这个T可以代指所有的枚举类型，因为所有的枚举都隐式继承<code>Enum</code>。</p>
+<p>如果超类类型参数使用通配符<code>?</code>代替，就有三种情况：</p>
+<ul>
+<li><p>没有任何限定，需要用<code>*</code>填入</p>
+</li>
+<li><p>有extends限定，需要用<code>+</code>加上超类描述符填入</p>
+</li>
+<li><p>有super限定，需要用<code>-</code>加上子类描述符填入</p>
+</li>
+</ul>
+<p>下面是这三种情况的实例：</p>
+<pre><code class="hljs Java">T extends Set&lt;?&gt;
+	&lt;T::Ljava/util/Set&lt;*&gt;;&gt;
+T extends List&lt;? extends T&gt;
+	&lt;T::Ljava/util/List&lt;+TT;&gt;;&gt;
+T extends Map&lt;? <span class="hljs-keyword">super</span> FileInputStream, T&gt;
+	&lt;T::Ljava/util/Map&lt;-Ljava/io/FileInputStream;TT;&gt;;&gt;</code></pre>
+<h2 id="泛型签名"><a href="#泛型签名" class="headerlink" title="泛型签名"></a>泛型签名</h2><p>泛型在声明之后就可以用于描述类、字段、方法等的具体描述符，这部分也叫泛型签名，是另一种描述类、字段、方法类型的方式。</p>
+<p>泛型签名与修饰的结构有关。它不仅包含了类、字段、方法每个具体位置上需要的具体类型，还包含对泛型的声明。如果这个签名中使用的泛型没有被声明过，那么就应该在签名的前方加入它的声明。（也就是说声明是签名的一部分）</p>
+<p>下面对签名的不同作用位置分开说明：</p>
+<ul>
+<li>泛型签名修饰了一个类。类有两个地方需要泛型的信息：超类和实现接口。这些类的具体泛型信息要以超类和实现接口的顺序排列写入，写入规则和上面的类型参数超类写入规则一样。</li>
+</ul>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span>&lt;<span class="hljs-title">T</span>&gt; <span class="hljs-keyword">extends</span> <span class="hljs-title">SuperClass</span>&lt;<span class="hljs-title">T</span>&gt; <span class="hljs-keyword">implements</span> <span class="hljs-title">Interface1</span>, <span class="hljs-title">Interface2</span>&lt;<span class="hljs-title">T</span>&gt;</span>
+<span class="hljs-class">	&lt;<span class="hljs-title">T</span>:<span class="hljs-title">Ljava</span>/<span class="hljs-title">lang</span>/<span class="hljs-title">Object</span></span>;&gt;LSuperClass&lt;TT;&gt;;LInterface1;LInterface2&lt;TT;&gt;;</code></pre>
+<ul>
+<li>泛型签名修饰了一个字段。字段只需要描述字段本身具体的泛型信息，并且字段不能定义泛型，所以泛型签名只包含它的类型的泛型信息。</li>
+</ul>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> Set&lt;T&gt; set;
+	Ljava/util/Set&lt;TT;&gt;;</code></pre>
+<ul>
+<li>泛型签名修饰了一个方法。这时这里就是方法描述符的具体泛型信息。格式类似普通的方法描述符，只是泛型信息的写入要遵照上方规则。如果方法带有抛出异常声明并且异常列表含有泛型，那么在描述符之后还要加上异常列表。异常列表的每个类都要用^开头并且需要写出具体的泛型信息。</li>
+</ul>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> &lt;E extends Exception&gt; <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(T obj, List&lt;? <span class="hljs-keyword">super</span> T&gt; list)</span> <span class="hljs-keyword">throws</span> E</span>
+<span class="hljs-function">	&lt;E:Ljava/lang/Exception</span>;&gt;(TT;Ljava/util/List&lt;-TT;&gt;;)V^TE;</code></pre>
+<p>下面我们定义一个类作为例子，写出所有成员的泛型签名：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span>&lt;<span class="hljs-title">T</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">List</span>&lt;? <span class="hljs-keyword">extends</span> <span class="hljs-title">Number</span>&gt;&gt; <span class="hljs-keyword">implements</span> <span class="hljs-title">Comparable</span>&lt;<span class="hljs-title">T</span>&gt; </span>&#123;
+	<span class="hljs-comment">// &lt;T::Ljava/util/List&lt;+Ljava/lang/Number;&gt;;&gt;Ljava/lang/Object;Ljava/lang/Comparable&lt;TT;&gt;</span>
+
+	<span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> &lt;E extends Exception&gt; <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test1</span><span class="hljs-params">(T obj)</span> <span class="hljs-keyword">throws</span> E</span>;
+	<span class="hljs-comment">// &lt;E:Ljava/lang/Exception;&gt;(TT;)V^TE;</span>
+
+	<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> T <span class="hljs-title">test2</span><span class="hljs-params">()</span></span>;
+	<span class="hljs-comment">// ()TT;</span>
+
+	<span class="hljs-keyword">public</span> Set&lt;T&gt; set;
+	<span class="hljs-comment">// Ljava/lang/Set&lt;TT;&gt;;</span>
+&#125;</code></pre>
+<h2 id="泛型擦除"><a href="#泛型擦除" class="headerlink" title="泛型擦除"></a>泛型擦除</h2><p>在阅读完上面的文本后，你可能会有一个疑问：Java已经有方法描述符可以用来描述方法、字段描述符来描述字段等等，为什么还要再加入一个泛型签名用于额外的检查呢？这就有关于Java对泛型的具体实现方式，也就是<strong>泛型擦除</strong>。</p>
+<p>在正式介绍这个机制之前，我们先看看反射对于泛型的处理。定义下面这个类：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span>&lt;<span class="hljs-title">T</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">InputStream</span>&gt; </span>&#123;
+	
+	<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(T stream)</span> </span>&#123;
+	&#125;
+&#125;</code></pre>
+<p>接下来我们想要反射调用<code>test</code>这个方法。可是我们看到这个方法的形参列表里面含有一个类型参数T，这个我们没有办法具体表示。所以，我们可以用<code>Class</code>类的<code>getDeclaredMethods</code>获取所有方法检查它的真正形参列表的样子：</p>
+<pre><code class="hljs Java">[<span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> Test.test(java.io.InputStream)]</code></pre>
+<p>可以看到，类型参数的形参的位置上使用了它的超类<code>InputStream</code>。字节码在所有的含有类型参数的地方都用它们的超类的原始类型代替，这种现象就是<strong>泛型擦除</strong>。</p>
+<p>泛型擦除保证了JVM获取方法时不含有未知量，在本质上其实是保证各个字节码中只存在静态的信息，这样能保证运行的正确性，不会产生方法的二义性调用等。</p>
+<p>对于具体的字节码，所有字节码指令都不能用带有泛型信息的类。具体来说，<code>new/checkcast/instanceof/invokeXXX</code>字节码都不能使用任何泛型信息，它们只能使用原始类型和替换的超类。</p>
+<p>在JVM中，泛型擦除之后泛型的真正实现其实是<code>checkcast</code>等字节码指令的约束和运行时对于对象真实类型推断的方法。在下面的例子中能体现字节码对于泛型的约束。</p>
+<h2 id="实例：泛型方法"><a href="#实例：泛型方法" class="headerlink" title="实例：泛型方法"></a>实例：泛型方法</h2><p>下面，我们要生成这样的代码：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> &lt;T extends Number&gt; <span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">test</span><span class="hljs-params">(List&lt;? extends T&gt; list, T value)</span> </span>&#123;
+	Comparator&lt;? <span class="hljs-keyword">super</span> Number&gt; comparator = (n1, n2) -&gt; (<span class="hljs-keyword">int</span>) Math.signum(n1.doubleValue() - n2.doubleValue());
+	list.sort(comparator);
+	T num = list.get(<span class="hljs-number">0</span>);
+	<span class="hljs-keyword">return</span> num.intValue() + Collections.binarySearch(list, value, comparator);
+&#125;</code></pre>
+<p>首先写出它的方法描述符和泛型签名：</p>
+<pre><code class="hljs Java">Desc:
+	(Ljava/util/List;Ljava/lang/Number;)I
+	<span class="hljs-comment">// List擦除类型参数所以回到原始类型，T擦除到父类Number</span>
+Signature:
+	&lt;T:Ljava/lang/Number;&gt;(Ljava/util/List&lt;+TT;&gt;;TT;)I</code></pre>
+<p>接下来注意到第一行有一个lambda表达式，它实现的是<code>Comparator</code>类的<code>compare</code>方法。根据<code>comparator</code>变量的类型，得知实现方法的参数列表应该是<code>(Number, Number)</code>。所以我们应该生成下面的lambda方法：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-comment">/* synthetic */</span> <span class="hljs-keyword">int</span> lambda$test$<span class="hljs-number">0</span>(Number n1, Number n2) &#123;
+	<span class="hljs-keyword">return</span> (<span class="hljs-keyword">int</span>) Math.signum(n1.doubleValue() - n2.doubleValue());
+&#125;</code></pre>
+<p>字节码写入如下：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 省略方法声明，mv是MethodVisitor</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// n1</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/Number&quot;</span>, <span class="hljs-string">&quot;doubleValue&quot;</span>, <span class="hljs-string">&quot;()D&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// n2</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/Number&quot;</span>, <span class="hljs-string">&quot;doubleValue&quot;</span>, <span class="hljs-string">&quot;()D&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(DSUB); <span class="hljs-comment">// 相减</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/Math&quot;</span>, <span class="hljs-string">&quot;signum&quot;</span>, <span class="hljs-string">&quot;(D)D&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(D2I); <span class="hljs-comment">// 强制类型转换</span>
+mv.visitInsn(IRETURN);
+mv.visitMaxs(<span class="hljs-number">4</span>, <span class="hljs-number">2</span>);</code></pre>
+<p>这时候就能把comparator给构造出来了。注意我们实现的方法是<code>compare(Object, Object)</code>——类型参数T被擦除到父类型<code>Object</code>（<strong>这和你代码中的使用无关，取决于类和方法的定义</strong>），而我们需要的实现是<code>(Number, Number)</code>，这两个不冲突，但是会损失类型信息（下文会讲）。因此我们inDy的参数第一个是实现的目标的描述符，第三个是我们真正实现目标的描述符。</p>
+<pre><code class="hljs Java">mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;compare&quot;</span>, <span class="hljs-comment">// 实现的方法名</span>
+                          <span class="hljs-string">&quot;()Ljava/util/Comparator;&quot;</span>, <span class="hljs-comment">// 要求返回Comparator，注意泛型被擦除</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// BSM的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;(Ljava/lang/Object;Ljava/lang/Object;)I&quot;</span>), <span class="hljs-comment">// compare的方法描述符，泛型擦除到了Object</span>
+                          <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;lambda$test$0&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Number;Ljava/lang/Number;)I&quot;</span>, <span class="hljs-keyword">false</span>), <span class="hljs-comment">// lambda实现方法的句柄</span>
+                          Type.getType(<span class="hljs-string">&quot;(Ljava/lang/Number;Ljava/lang/Number;)I&quot;</span>) <span class="hljs-comment">// 真正实现的方法描述符</span>
+);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">2</span>);</code></pre>
+<p>剩下的代码就比较简单了，就像下面这样：</p>
+<pre><code class="hljs Java">mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// list</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">2</span>); <span class="hljs-comment">// comparator</span>
+mv.visitMethodInsn(INVOKEINTERFACE, <span class="hljs-string">&quot;java/util/List&quot;</span>, <span class="hljs-string">&quot;sort&quot;</span>, <span class="hljs-string">&quot;(Ljava/util/Comparator;)V&quot;</span>, <span class="hljs-keyword">true</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// list</span>
+mv.visitInsn(ICONST_0);
+mv.visitMethodInsn(INVOKEINTERFACE, <span class="hljs-string">&quot;java/util/List&quot;</span>, <span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;(I)Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">true</span>); <span class="hljs-comment">// 返回值被擦除到Object，这和List::get定义有关而和使用无关</span>
+mv.visitTypeInsn(CHECKCAST, <span class="hljs-string">&quot;java/lang/Number&quot;</span>); <span class="hljs-comment">// 强制转换到T的擦除类型Number，这是因为局部变量的类型是T</span>
+mv.visitVarInsn(ASTORE, <span class="hljs-number">3</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">3</span>); <span class="hljs-comment">// num</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/Number&quot;</span>, <span class="hljs-string">&quot;intValue&quot;</span>, <span class="hljs-string">&quot;()I&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// list</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// value</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">2</span>); <span class="hljs-comment">// comparator</span>
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/util/Collections&quot;</span>, <span class="hljs-string">&quot;binarySearch&quot;</span>, <span class="hljs-string">&quot;(Ljava/util/List;Ljava/lang/Object;Ljava/util/Comparator;)I&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(IADD);
+mv.visitInsn(IRETURN);
+mv.visitMaxs(<span class="hljs-number">4</span>, <span class="hljs-number">4</span>);</code></pre>
+<p>这样我们的使用泛型的方法就构建好了。我们可以通过反射传入参数：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// Loader::defineClassNow是自定义的类加载器加载类的方法</span>
+Class&lt;?&gt; generated = <span class="hljs-keyword">new</span> Loader().defineClassNow(<span class="hljs-string">&quot;Test&quot;</span>, cw.toByteArray());
+System.out.println(generated.getDeclaredMethod(<span class="hljs-string">&quot;test&quot;</span>, List.class, Number.class)
+	.invoke(<span class="hljs-keyword">null</span>, <span class="hljs-keyword">new</span> ArrayList&lt;&gt;(List.of(<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">4</span>)), <span class="hljs-number">3</span>));</code></pre>
+<p>得到的结果是：</p>
+<pre><code class="hljs SH">3</code></pre>
+<p>这就说明了我们的方法写入成功并成功地被JVM执行。</p>
+<h2 id="泛型的安全性"><a href="#泛型的安全性" class="headerlink" title="泛型的安全性"></a>泛型的安全性</h2><p>泛型的加入本质是为了确保代码的简洁和编译时辅助类型检查，也就是说，泛型能阻止类型的错误转换，就比如下面的例子：</p>
+<pre><code class="hljs Java">List list = <span class="hljs-keyword">new</span> ArrayList();
+list.add(<span class="hljs-string">&quot;hello&quot;</span>);
+<span class="hljs-keyword">int</span> i = (Integer) list.get(<span class="hljs-number">0</span>);</code></pre>
+<p>这种代码在javac编译时是无法检查出语法和类型错误的：List的封装性造成了它内部数据的类型丢失，在get时只能得知对象是Object子类的对象但是不能得知确切的类型。但是在JVM运行时这就不一样了。JVM能知道任何对象的确切类型，因此在强制转换Integer时JVM能探测到<code>String-&gt;Integer</code>这种不可能的强制类型转换并抛出<code>ClassCastException</code>。</p>
+<p>当泛型加入后，这种情况被改变了：</p>
+<pre><code class="hljs Java">List&lt;String&gt; list = <span class="hljs-keyword">new</span> ArrayList&lt;&gt;();
+list.add(<span class="hljs-string">&quot;hello&quot;</span>);
+<span class="hljs-keyword">int</span> i = (Integer) list.get(<span class="hljs-number">0</span>);</code></pre>
+<p>这样的代码在javac就不能通过编译了：get的返回值是类型参数T（通过字节码中的泛型签名得知），在前面的声明中已经定义为String，因此javac可以探测到这个不可能的类型转换，抛出编译异常阻止编译，保证类型的安全性。</p>
+<p>总而言之，<strong>泛型确保了源码级别上的类型安全性</strong>。</p>
+<p>但是在字节码上看来，这就是另外一回事了。因为“泛型擦除”机制，字节码是不能使用泛型检查的，只能通过类型参数的已知超类约束泛型。但是这种约束不能阻止我们使用错误的类型传入：类验证时是无法检查泛型的。下面使用反射（本质和字节码差不多）举一个例子，使用到了我们刚才写的泛型方法：</p>
+<pre><code class="hljs Java">System.out.println(generated.getDeclaredMethod(<span class="hljs-string">&quot;test&quot;</span>, List.class, Number.class)
+	.invoke(<span class="hljs-keyword">null</span>, <span class="hljs-keyword">new</span> ArrayList&lt;&gt;(List.of(<span class="hljs-string">&quot;1&quot;</span>, <span class="hljs-string">&quot;2&quot;</span>, <span class="hljs-string">&quot;3&quot;</span>, <span class="hljs-string">&quot;4&quot;</span>)), <span class="hljs-number">3</span>));</code></pre>
+<p>这里是不会产生任何警告的（即使在IDE中），但是我们能清楚的看出它不符合我们对于test的定义：test要求传入的是<code>List&lt;? extends T&gt;</code>和<code>T</code>的形参，并且T要求是Number的子类，但是我们实际传入的是<code>List&lt;String&gt;</code>和<code>Number</code>，明显不符合test的形参列表。可是我们是能成功调用的：类型擦除让这些类型回到了原始类型，也就是说test的形参列表变成了<code>List</code>和<code>Number</code>，这时与我们传入的对象相符合，因此反射调用不会产生问题，但是在方法内的具体实现时会使用到checkcast用于类型转换，这里就会被JVM检测到异常并抛出<code>ClassCastException</code>。对于我们的这个调用，它最后的结果是：</p>
+<pre><code class="hljs SH">Exception <span class="hljs-keyword">in</span> thread <span class="hljs-string">&quot;main&quot;</span> java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at io.github.nickid2018.asmtest.ASMMain.main(ASMMain.java:23)
+Caused by: java.lang.ClassCastException: class java.lang.String cannot be cast to class java.lang.Number (java.lang.String and java.lang.Number are <span class="hljs-keyword">in</span> module java.base of loader <span class="hljs-string">&#x27;bootstrap&#x27;</span>)
+	at java.base/java.util.TimSort.countRunAndMakeAscending(TimSort.java:355)
+	at java.base/java.util.TimSort.sort(TimSort.java:220)
+	at java.base/java.util.Arrays.sort(Arrays.java:1307)
+	at java.base/java.util.ArrayList.sort(ArrayList.java:1721)
+	at Test.test(Unknown Source)
+	... 5 more</code></pre>
+<p>这样的结果说明了泛型在字节码中是不能保证安全的，类验证无法通过泛型签名阻止错误调用。因此在写入字节码时，遇到泛型必须严谨的检查，否则就会因为类型信息的丢失造成了类型的不安全行为，并且在写字节码时应尽量避免使用泛型。泛型的便利性仅体现在源码上，字节码中的泛型写入很麻烦。</p>
+<hr>
+<p>有关于泛型的字节码知识就到这里了，有错误可以在评论指出。</p>
+<p>到这里有关于具体方法字节码的写入就结束了，之后主要是有关于类结构的详解和ASM库各种工具的讲解。</p>
+<p>下一篇文章暂定为类的结构（一）。</p>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2021/12/02/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AMethodVisitor%E4%B8%8EOpcode%EF%BC%88%E4%BA%94%EF%BC%89invokedynamic%E3%80%81%E6%96%B9%E6%B3%95%E5%8F%A5%E6%9F%84%E3%80%81lambda/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：MethodVisitor与Opcode（五）invokedynamic、方法句柄、lambda</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+    <div class="valine-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <div id="valine_thread" class="valine-thread"></div>
+    </div>
+    <script type="text/javascript" src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script type="text/javascript" src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script type="text/javascript">
+      new Valine({
+        el: "#valine_thread",
+        appId: "mW2DHhwzDNYk9Gk1hsi4XJV7-gzGzoHsz",
+        appKey: "reCUh7XTXRmlDsR3YfbjreRb",
+        avatar: "mp",
+        placeholder: "发一条友善的评论吧~~",
+        notify: true,
+        visitor: true,
+        pageSize: 10,
+      });
+    </script>
+  
+
+  
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>9</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%9B%E5%9E%8B%E7%9A%84%E5%A3%B0%E6%98%8E"><span class="toc-number">1.</span> <span class="toc-text">泛型的声明</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%9B%E5%9E%8B%E7%AD%BE%E5%90%8D"><span class="toc-number">2.</span> <span class="toc-text">泛型签名</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%9B%E5%9E%8B%E6%93%A6%E9%99%A4"><span class="toc-number">3.</span> <span class="toc-text">泛型擦除</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B%EF%BC%9A%E6%B3%9B%E5%9E%8B%E6%96%B9%E6%B3%95"><span class="toc-number">4.</span> <span class="toc-text">实例：泛型方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%9B%E5%9E%8B%E7%9A%84%E5%AE%89%E5%85%A8%E6%80%A7"><span class="toc-number">5.</span> <span class="toc-text">泛型的安全性</span></a></li></ol>
+  </div>
+</section>
+
+
+      
+<section class="widet-notice widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-notice" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M512 945.02305225v28.15620663a24.27259221 24.27259221 0 0 1-24.27259221 24.27259335H394.0352a48.54518557 48.54518557 0 0 1-41.74885888-23.78714112l-110.68302222-184.47170332a132.04290333 132.04290333 0 0 1-17.47626667-48.54518557h118.4502511a200.97706667 200.97706667 0 0 1 76.21594113 14.56355556l20.38897777 133.49925888a48.54518557 48.54518557 0 0 0 36.40888888 27.67075555l16.01991111 2.91271112a24.27259221 24.27259221 0 0 1 20.38897778 25.72894889zM997.45185223 463.45481443a194.18074112 194.18074112 0 0 1-38.8361489 116.50844445 24.75804445 24.75804445 0 0 1-36.4088889 0l-34.95253333-34.95253333a24.27259221 24.27259221 0 0 1-2.91271111-30.58346667 97.09036999 97.09036999 0 0 0 0-106.79940665 24.27259221 24.27259221 0 0 1 2.91271111-30.58346666l34.95253333-34.95253334a24.75804445 24.75804445 0 0 1 18.93262223-7.28177777 26.2144 26.2144 0 0 1 17.47626667 9.70903665A194.18074112 194.18074112 0 0 1 997.45185223 463.45481443z m-194.18074112-388.36148111v776.72296335a48.54518557 48.54518557 0 0 1-48.54518556 48.54518443h-28.64165888a48.54518557 48.54518557 0 0 1-33.98163001-14.07810332l-145.63555556-143.20829668A291.27111111 291.27111111 0 0 0 342.57730333 657.63555556H172.18370333a145.63555556 145.63555556 0 0 1-145.63555556-145.63555556v-97.09036999a145.63555556 145.63555556 0 0 1 145.63555556-145.63555556h170.3936a291.27111111 291.27111111 0 0 0 206.31703779-85.43952668l145.63555555-143.20829554a48.54518557 48.54518557 0 0 1 33.98162888-14.07810446H754.72592555a48.54518557 48.54518557 0 0 1 48.54518556 48.54518555z" fill="currentColor"></path>
+</svg>
+    <span>NOTICE</span>
+  </div>
+  <div class="widget-body">
+    <p>本站所有文章都禁止以任何形式的抄袭或转载哦~</p>
+  </div>
+</section>
+
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (9)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://space.bilibili.com/443879411/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" class="icon icon-github"><path d="M800.768 237.216h-51.264l44.832-44.832c19.232-19.232 19.232-57.664 0-76.864s-57.664-19.232-76.864 0l-128.128 121.728h-153.76L307.456 115.52c-19.232-19.232-57.664-19.232-76.864 0s-19.232 57.664 0 76.864l44.832 44.832H224.16C134.464 237.216 64 307.68 64 397.376v345.952c0 96.096 70.464 166.56 160.16 166.56h570.144c89.696 0 160.16-70.464 160.16-160.16V397.376c6.4-89.696-64.064-160.16-153.76-160.16z m44.864 506.112a57.44 57.44 0 0 1-57.664 57.664H230.624a57.44 57.44 0 0 1-57.664-57.664v-339.52c0-32.032 25.632-57.664 57.664-57.664h557.344c32.032 0 57.664 25.632 57.664 57.664v339.52zM345.952 461.44a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z m333.12 0a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z"></path></svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2022 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>
