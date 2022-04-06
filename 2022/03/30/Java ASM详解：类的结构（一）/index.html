@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google-site-verification" content="7KjHJEhAPUbzDXLRtyq2yOGm2KCFVvp5YN588Uf9xNw" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <!-- 百度收录，真tmzz -->
+  <script>
+  (function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https'){
+   bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  
+
+  <title>Java ASM详解：类的结构（一） | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.png)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/games">休闲小游戏</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：类的结构（一）</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2022-03-30T00:00:00.000Z" itemprop="datePublished">2022-03-30</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>了解了各个字节码的意义，我们可以构建出方法。这篇文章开始不再讲具体的字节码，而是开始介绍类的结构。今天这篇文章主要讲类的成员/属性和它们在字节码中的写入表示。</p>
+<h2 id="类静态初始化方法"><a href="#类静态初始化方法" class="headerlink" title="类静态初始化方法"></a>类静态初始化方法</h2><p>当一个类被装载入内存，它是没有<code>静态初始化</code>过的。当从其他类调用它内部的方法或字段时，类才会被静态初始化。静态初始化只进行一次。</p>
+<p>静态初始化的主要工作是在类加载之后使用之前进行内部数据的初始化操作。在Java代码中，它使用<code>static块</code>声明，一个类文件可以有多个static块。</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">static</span> &#123;
+  <span class="hljs-comment">// Code...</span>
+&#125;</code></pre>
+<p>在字节码中，静态初始化会被写入成为一个方法，名称为<code>&lt;clinit&gt;</code>，是<code>Class Initialization</code>的缩写。它的描述符要求是<code>()V</code>，不带有泛型签名，不抛出异常，访问标志必须含有<code>static</code>。如果&lt;clinit&gt;不满足这些条件，会产生下面这些报错：</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">错误输入</th>
+<th style="text-align:left">报错</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">访问标志不存在static</td>
+<td style="text-align:left">java.lang.ClassFormatError: Method &lt;clinit&gt; is not static in class file *</td>
+</tr>
+<tr>
+<td style="text-align:center">方法描述符不是<code>()V</code></td>
+<td style="text-align:left">java.lang.ClassFormatError: Method “&lt;clinit&gt;” in class * has illegal signature *</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>和static块不同，在字节码中&lt;clinit&gt;<strong>只能存在一个</strong>。多个static块合成一个&lt;clinit&gt;会按照static块的顺序一块一块进行拼接，同时局部变量也会进行拼接。例如下方的代码：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">static</span> &#123;
+  String a = <span class="hljs-string">&quot;a&quot;</span>;
+  System.out.println(a);
+&#125;
+
+<span class="hljs-keyword">static</span> &#123;
+  Object a = <span class="hljs-string">&quot;b&quot;</span>;
+  System.out.println(a);
+&#125;</code></pre>
+<p>在字节码中会进行拼接，翻译后变成这样：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">static</span> &#123;
+  &#123;
+    String a = <span class="hljs-string">&quot;a&quot;</span>;
+    System.out.println(a);
+  &#125;
+  &#123;
+    Object a = <span class="hljs-string">&quot;b&quot;</span>;
+    System.out.println(a);
+  &#125;
+&#125;</code></pre>
+<h2 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h2><p>创建某个类的对象必然会调用某一个具体的构造函数。构造函数的意义就是对类对象内部数据进行初始化。</p>
+<p>在字节码中，构造函数的名称是<code>&lt;init&gt;</code>而非类名。它要求返回值是<code>void（V）</code>，访问标志只包含访问权限标志（public/protected/private），对于参数列表和异常列表不加限制。如果不满足上面的条件，JVM在加载阶段会抛出下面的异常：</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">错误输入</th>
+<th style="text-align:left">报错</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">访问标志存在不合法的标志</td>
+<td style="text-align:left">java.lang.ClassFormatError: Method &lt;init&gt; in class * has illegal modifiers: *</td>
+</tr>
+<tr>
+<td style="text-align:center">方法描述符返回值不是<code>V</code></td>
+<td style="text-align:left">java.lang.ClassFormatError: Method “&lt;init&gt;” in class * has illegal signature *</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>构造函数的另一项限制在它的内部。构造函数必须调用它父类的构造函数或本类的另一个构造函数，否则会在验证时抛出<code>java.lang.VerifyError: Constructor must call super() or this() before return</code>。</p>
+<p>每个类都要含有一个构造函数。如果源码中没有构造函数，那么编译时会自动添加默认构造函数，它的Java源码和字节码写入如下：</p>
+<p>【注意：这里的代码不适用于非静态内部类，下文会详细介绍】</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">ClassName</span><span class="hljs-params">()</span> </span>&#123;
+  <span class="hljs-keyword">super</span>();
+&#125;
+
+<span class="hljs-comment">// --- 字节码</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// 加载this</span>
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/Object&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 类名需要改成父类</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>);</code></pre>
+<h2 id="类字段的初始化"><a href="#类字段的初始化" class="headerlink" title="类字段的初始化"></a>类字段的初始化</h2><p>类中的静态字段不和类对象绑定而和类绑定，因此它们必须在静态初始化时被初始化；而类中的实例字段和对象绑定，需要在对象构造时被初始化。</p>
+<ul>
+<li>如果初始化语句是一个常量字面值且字段是静态字段，如<code>字符串</code>、<code>数字</code>、<code>null</code>或<code>XXXX.class</code>，它们的初始化字节码应该直接使用<code>visitField</code>的<code>value</code>参数将初始值传入。</li>
+<li>如果初始化语句不是常量字面值或不是静态字段，如<code>调用方法语句</code>、<code>对象创建</code>、<code>数组创建</code>等，它们的初始化字节码应该在<code>&lt;clinit&gt;</code>或<code>&lt;init&gt;</code>方法内。</li>
+</ul>
+<p>根据这个规则，我们可以推断出一段静态字段初始化的代码的具体实现：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">int</span> CONST_INT = <span class="hljs-number">1</span>;
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">long</span> START_TIME = System.currentTimeMillis();
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object object;</code></pre>
+<p>在写入字节码时，Java代码应该是这样的：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">int</span> CONST_INT = <span class="hljs-number">1</span>;
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> <span class="hljs-keyword">long</span> START_TIME;
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> Object object;
+
+<span class="hljs-keyword">static</span> &#123;
+  START_TIME = System.currentTimeMillis();
+&#125;</code></pre>
+<p>写入字节码的代码：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 类名为Test，省略ClassWriter创建</span>
+FieldVisitor fv = cw.visitField(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, <span class="hljs-string">&quot;CONST_INT&quot;</span>, <span class="hljs-string">&quot;I&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">1</span>);
+fv.visitEnd();
+fv = cw.visitField(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, <span class="hljs-string">&quot;START_TIME&quot;</span>, <span class="hljs-string">&quot;J&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+fv.visitEnd();
+fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, <span class="hljs-string">&quot;object&quot;</span>, <span class="hljs-string">&quot;Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+fv.visitEnd();
+MethodVisitor mv = cw.visitMethod(ACC_STATIC, <span class="hljs-string">&quot;&lt;clinit&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+mv.visitMethodInsn(INVOKESTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;currentTimeMillis&quot;</span>, <span class="hljs-string">&quot;()J&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitFieldInsn(PUTSTATIC, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;START_TIME&quot;</span>, <span class="hljs-string">&quot;J&quot;</span>);
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">0</span>);
+mv.visitEnd();</code></pre>
+<p>在字节码中，静态初始化方法内可以对一个静态常量字段进行多次赋值，并且JVM不报错。如果在静态初始化中不存在初始化某个静态字段的代码，那么它们就会使用默认值，也就是<code>visitField</code>中<code>value</code>参数决定的值。</p>
+<p>实例字段的初始化类似于静态初始化，只是它们在构造函数内写入。</p>
+<h2 id="桥接方法"><a href="#桥接方法" class="headerlink" title="桥接方法"></a>桥接方法</h2><p>在介绍桥接方法（Bridge Method）之前，先来简单介绍<strong>重写</strong>（Override）。</p>
+<p>重写就是子类将父类的某个方法进行覆盖，进而实际执行时会执行子类方法而不是父类的。重写需要满足：</p>
+<ul>
+<li><strong>名称相同</strong>：父类的方法名称必须与子类的方法名称相同。</li>
+<li><strong>参数列表对应</strong>：父类的方法参数列表应该与子类一一对应，这一点适用于泛型，也就是子类确定的类型参数应该在重写方法中带入类型参数确定的类型。</li>
+<li><strong>异常列表不增添</strong>：子类的复写方法不能出现父类没有声明抛出的异常。</li>
+<li><strong>访问权限不缩小</strong>：子类的复写方法的可见性不能低于父类方法可见性，如父类的访问可见性为<code>public</code>，那么子类也必须声明为<code>public</code>。</li>
+</ul>
+<p>下面是具体的例子，下方的重写案例都是正常能通过编译的：</p>
+<pre><code class="hljs Java"><span class="hljs-class"><span class="hljs-keyword">interface</span> <span class="hljs-title">SupClass</span>&lt;<span class="hljs-title">T</span>, <span class="hljs-title">R</span>&gt; </span>&#123;
+  <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test1</span><span class="hljs-params">()</span></span>;
+  <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test2</span><span class="hljs-params">(T t)</span></span>;
+  <span class="hljs-function">R <span class="hljs-title">test3</span><span class="hljs-params">()</span></span>;
+  <span class="hljs-function">R <span class="hljs-title">test4</span><span class="hljs-params">(T t)</span></span>;
+&#125;
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">BaseClass</span>&lt;<span class="hljs-title">R</span>&gt; <span class="hljs-keyword">implements</span> <span class="hljs-title">SupClass</span>&lt;<span class="hljs-title">String</span>, <span class="hljs-title">R</span>&gt; </span>&#123;
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test1</span><span class="hljs-params">()</span> ...</span>
+<span class="hljs-function">  <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test2</span><span class="hljs-params">(String s)</span> ...</span>
+<span class="hljs-function">  <span class="hljs-keyword">public</span> R <span class="hljs-title">test3</span><span class="hljs-params">()</span> ...</span>
+<span class="hljs-function">  <span class="hljs-keyword">public</span> R <span class="hljs-title">test4</span><span class="hljs-params">(String s)</span> ...</span>
+<span class="hljs-function">&#125;</span></code></pre>
+<p>之前我们说到，泛型的实现是所谓的<strong>泛型擦除</strong>，也就是类型参数会被擦除到其限定的父类上。现在来看看<code>test2</code>这个方法，在父类和子类中，它们的方法描述符和泛型签名是不一样的：</p>
+<pre><code class="hljs Java">SupClass test2:  (Ljava/lang/Object;)V &lt;T:Ljava/lang/Object;&gt;(T)V
+BaseClass test2: (Ljava/lang/String;)V <span class="hljs-keyword">null</span></code></pre>
+<p>虽然描述符不同，但是在逻辑上已经达成了重写条件，应该当作重写处理。但是，因为方法描述符不同，实际调用时JVM是找不到这个方法的：<code>invokevirtual</code>字节码<strong>只会寻找名称相同且方法描述符相同的方法</strong>。因此，桥接方法出现用于解决这个问题。它的代码意义就是将确定的类型参数强制转换，将父类泛型化的参数传入具体化的子类复写方法中。</p>
+<p>例如test2，编译器给出的桥接方法就像下面这样：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// BaseClass</span>
+<span class="hljs-comment">// 注意：不要在源码中这样写！编译器会因为&quot;具有相同擦除但不构成重写&quot;抛出异常</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test2</span><span class="hljs-params">(Object s)</span> </span>&#123; <span class="hljs-comment">// 父类的方法描述符</span>
+  test2((String) s); <span class="hljs-comment">// 通过强制类型转换，将参数列表转换以满足子类的方法描述符</span>
+&#125;</code></pre>
+<p>桥接方法仅出现在<strong>父类方法和子类重写方法擦除后的方法描述符不一致</strong>时，如下方的例子：</p>
+<pre><code class="hljs Java"><span class="hljs-class"><span class="hljs-keyword">interface</span> <span class="hljs-title">SupClass</span>&lt;<span class="hljs-title">T</span>, <span class="hljs-title">R</span>, <span class="hljs-title">E</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">Exception</span>&gt; </span>&#123;
+  <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test1</span><span class="hljs-params">(T t)</span></span>;
+  <span class="hljs-function">R <span class="hljs-title">test2</span><span class="hljs-params">()</span></span>;
+  <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test3</span><span class="hljs-params">()</span> <span class="hljs-keyword">throws</span> E</span>;
+&#125;
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">BaseClass</span>&lt;<span class="hljs-title">R</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">InputStream</span>&gt; <span class="hljs-keyword">implements</span> <span class="hljs-title">SupClass</span>&lt;<span class="hljs-title">String</span>, <span class="hljs-title">R</span>, <span class="hljs-title">IOException</span>&gt; </span>&#123;
+  <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test1</span><span class="hljs-params">(String s)</span> ...</span>
+<span class="hljs-function">  <span class="hljs-comment">// 需要生成桥接方法：参数列表描述符不同</span></span>
+<span class="hljs-function">  R <span class="hljs-title">test2</span><span class="hljs-params">()</span> ...</span>
+<span class="hljs-function">  <span class="hljs-comment">// 需要生成桥接方法：R擦除到的类型和父类擦除不一样</span></span>
+<span class="hljs-function">  <span class="hljs-keyword">void</span> <span class="hljs-title">test3</span><span class="hljs-params">()</span> <span class="hljs-keyword">throws</span> IOException ...</span>
+<span class="hljs-function">  <span class="hljs-comment">// 不需要生成桥接方法：方法描述符相同</span></span>
+<span class="hljs-function">&#125;</span></code></pre>
+<p>桥接方法拥有下面的特性：</p>
+<ul>
+<li>名称与方法描述符相同：为了<code>invokevirtual</code>字节码能成功定位到这个重写方法，桥接方法必须和父类的目标方法名称和描述符一致。</li>
+<li>访问标志带有<code>ACC_SYNTHETIC</code>和<code>ACC_BRIDGE</code>标志。</li>
+<li>访问权限和子类重写方法相同。</li>
+<li>异常列表和父类方法相同。</li>
+</ul>
+<p>接下来我们要使用字节码实现<code>BaseClass</code>：</p>
+<pre><code class="hljs Java"><span class="hljs-class"><span class="hljs-keyword">interface</span> <span class="hljs-title">SupClass</span>&lt;<span class="hljs-title">T</span>&gt; </span>&#123;
+  <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(T t)</span>:</span>
+<span class="hljs-function">&#125;</span>
+<span class="hljs-function"></span>
+<span class="hljs-function">class BaseClass implements SupClass&lt;String&gt; </span>&#123;
+  
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(String s)</span> </span>&#123;
+    System.out.println(s);
+  &#125;
+&#125;</code></pre>
+<p>字节码：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// 略过构造函数，cw是ClassWriter</span>
+MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>);
+mv.visitFieldInsn(GETSTATIC, <span class="hljs-string">&quot;java/lang/System&quot;</span>, <span class="hljs-string">&quot;out&quot;</span>, <span class="hljs-string">&quot;Ljava/io/PrintStream;&quot;</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/PrintStream&quot;</span>, <span class="hljs-string">&quot;println&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">2</span>);
+mv.visitEnd();
+<span class="hljs-comment">// 桥接方法</span>
+mv = cw.visitMethod(ACC_PUBLIC + ACC_SYNTHETIC + ACC_BRIDGE, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Object;)V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>);
+mv.visitTypeInsn(CHECKCAST, <span class="hljs-string">&quot;java/lang/String&quot;</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;test&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">2</span>);
+mv.visitEnd();</code></pre>
+<h2 id="内部类"><a href="#内部类" class="headerlink" title="内部类"></a>内部类</h2><p>类的内部成员除了字段和方法外，还有内部类。内部类分为两种：</p>
+<ul>
+<li>静态内部类：使用static修饰的内部类。内部接口、内部枚举默认带有static访问标志，因此它们也属于静态内部类。</li>
+<li>非静态内部类：不使用static修饰的内部类。</li>
+</ul>
+<p>内部类的字节码数据不应该在外部类中的类文件数据中出现，应该独立于外部类。命名方式为<code>外部类名称$内部类名称</code>；如果内部类是局部内部类，在内部类名称前还需要加上编号；如果内部类是一个匿名内部类，应该使用编号代替。</p>
+<p>虽然内部类不需要写在外部类文件里面，但是外部类文件还是要声明它的。声明使用<code>ClassWriter</code>的<code>visitInnerClass</code>方法，它的每个参数的意义如下：</p>
+<ul>
+<li>name - 内部类的全限定名。例如<code>test.Test</code>下的内部类<code>Inner</code>这项值就是<code>test/Test$Inner</code>。</li>
+<li>outerName - 外部类的全限定名，如果内部类是匿名内部类或局部内部类，这项是<code>null</code>。</li>
+<li>innerName - 内部类的名称，如果内部类是匿名内部类，这项是<code>null</code>。</li>
+<li>access - 内部类的访问标志。</li>
+</ul>
+<p>最外层外部类需要写出它内部所有的类，包括嵌套的内部类。</p>
+<p>下面是一些内部类和它们的声明：</p>
+<pre><code class="hljs Java"><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Test</span> </span>&#123;
+  <span class="hljs-keyword">private</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Inner1</span> </span>&#123; ... &#125; <span class="hljs-comment">// 内部类1 - 成员内部类</span>
+  <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">()</span> </span>&#123;
+    <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Inner2</span> </span>&#123; ... &#125; <span class="hljs-comment">// 内部类2 - 局部内部类</span>
+    System.out.println(<span class="hljs-keyword">new</span> Test() &#123; ... &#125;); <span class="hljs-comment">// 内部类3 - 匿名内部类</span>
+  &#125;
+&#125;
+
+<span class="hljs-comment">// --- 字节码 外部类Test cw是ClassWriter</span>
+cw.visitInnerClass(<span class="hljs-string">&quot;Test$Inner1&quot;</span>, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;Inner1&quot;</span>, ACC_PRIVATE);
+cw.visitInnerClass(<span class="hljs-string">&quot;Test$1Inner2&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;Inner2&quot;</span>, <span class="hljs-number">0</span>); <span class="hljs-comment">// 局部内部类无访问标志</span>
+cw.visitInnerClass(<span class="hljs-string">&quot;Test$1&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>, <span class="hljs-number">0</span>); <span class="hljs-comment">// 匿名内部类无访问标志</span></code></pre>
+<p>在Java 11，JEP 181（Nest-Based Access Control）加入了<code>NestHost</code>和<code>NestMember</code>两项属性用于辅助访问权限控制，规定了所有内部类（包括嵌套的内部类）是最外层外部类的<code>NestMember</code>，最外层的外部类是所有内部类（包括嵌套）的<code>NestHost</code>。</p>
+<p>声明<code>NestMember</code>使用<code>ClassWriter</code>的<code>visitNestMember</code>方法，参数是内部类的全限定名。写入它的字节码如下（仍然使用上方的代码）：</p>
+<pre><code class="hljs Java">cw.visitNestMember(<span class="hljs-string">&quot;Test$Inner1&quot;</span>);
+cw.visitNestMember(<span class="hljs-string">&quot;Test$1Inner2&quot;</span>);
+cw.visitNestMember(<span class="hljs-string">&quot;Test$1&quot;</span>);</code></pre>
+<p>说回到内部类文件，它也需要声明外部类和<code>NestHost</code>。声明外部类也使用<code>visitInnerClass</code>方法，需要写出所有的外部类，包括嵌套；声明<code>NestHost</code>使用<code>visitNestHost</code>方法，参数是最外层外部类全限定名。</p>
+<p>下面是<code>Inner1</code>声明外部类的字节码写入：</p>
+<pre><code class="hljs Java">cw.visitNestHost(<span class="hljs-string">&quot;Test&quot;</span>);
+cw.visitInnerClass(<span class="hljs-string">&quot;Test$Inner1&quot;</span>, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;Inner1&quot;</span>, ACC_PRIVATE);</code></pre>
+<p>内部类的声明到此为止，接下来看看内部类和外部类的不同之处。</p>
+<p>对于非静态内部类，它的类对象需要依托于一个外部类实例才能创建。例如下方的代码：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">OuterClass</span> </span>&#123;
+  <span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">InnerClass</span> </span>&#123;
+  &#125;
+&#125;
+
+<span class="hljs-comment">// ----</span>
+OuterClass outer = <span class="hljs-keyword">new</span> OuterClass();
+InnerClass inner = outer.<span class="hljs-function">new <span class="hljs-title">InnerClass</span><span class="hljs-params">()</span></span>; <span class="hljs-comment">// 正确：使用外部类实例调用内部类默认构造函数</span>
+InnerClass inner2 = <span class="hljs-keyword">new</span> InnerClass(); <span class="hljs-comment">// 错误：需要一个外部类对象创建内部类对象</span></code></pre>
+<p>非静态内部类保存了外部类的实例，保存的字段名称是<code>this$嵌套类深度-1</code>（如果名称已存在那么就在这个名字后加<code>$</code>直到不存在有这个名称的字段），以<code>InnerClass</code>举例，它的字节码实际上类似于这样：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">InnerClass</span> </span>&#123;
+  
+  <span class="hljs-keyword">final</span> <span class="hljs-comment">/* synthetic */</span> OuterClass <span class="hljs-keyword">this</span>$<span class="hljs-number">0</span>; 
+  ...
+&#125;</code></pre>
+<p>外部类实例字段要求访问标志是<code>ACC_FINAL</code>和<code>ACC_SYNTHETIC</code>。使用<code>类名.this</code>相当于使用这个字段逐级获取，下面两个代码等价：</p>
+<pre><code class="hljs Java">OuterClass.<span class="hljs-keyword">this</span>
+<span class="hljs-keyword">this</span>.<span class="hljs-keyword">this</span>$<span class="hljs-number">0</span></code></pre>
+<p>为了适应外部类实例字段的加入，非静态内部类的构造函数和普通的构造函数不同。它的第一个局部变量仍然是<code>this</code>，但是第二个局部变量（或者说是第一个形式参数）成为了<strong>外部类的实例</strong>，从第二个形式参数开始才是真正在源码层级的参数列表。内部类的默认构造函数如下（使用<code>InnerClass</code>举例）。</p>
+<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">InnerClass</span><span class="hljs-params">(OuterClass <span class="hljs-keyword">this</span>$<span class="hljs-number">0</span>)</span> </span>&#123; <span class="hljs-comment">// 源码中这样写和字节码中是不一样的，编译器会自动在第一个参数前加上这个参数</span>
+  <span class="hljs-comment">// 字节码中不要求super调用是第一句语句</span>
+  <span class="hljs-keyword">this</span>.<span class="hljs-keyword">this</span>$<span class="hljs-number">0</span> = <span class="hljs-keyword">this</span>$<span class="hljs-number">0</span>;
+  <span class="hljs-keyword">super</span>();
+&#125;</code></pre>
+<p>字节码如下：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// cw是ClassVisitor</span>
+MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;(LOuterClass;)V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>);
+mv.visitFieldInsn(PUTFIELD, <span class="hljs-string">&quot;OuterClass$InnerClass&quot;</span>, <span class="hljs-string">&quot;this$0&quot;</span>, <span class="hljs-string">&quot;LOuterClass;&quot;</span>); <span class="hljs-comment">// 赋值字段</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
+mv.visitMethodInsn(INVOKESPECIAL, <span class="hljs-string">&quot;java/lang/Object&quot;</span>, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>); <span class="hljs-comment">// 调用super</span>
+mv.visitInsn(RETURN);
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">3</span>);
+mv.visitEnd();</code></pre>
+<h2 id="密封类"><a href="#密封类" class="headerlink" title="密封类"></a>密封类</h2><p>密封类（Sealed Class）于Java 15（JEP 360）被加入，它限制了类可被哪些类继承。下面是例子：</p>
+<pre><code class="hljs Java"><span class="hljs-keyword">public</span> sealed <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SupClass</span> <span class="hljs-title">permits</span> <span class="hljs-title">SubA</span>, <span class="hljs-title">SubB</span> </span>&#123; <span class="hljs-comment">// 密封类要求至少有一个子类</span>
+&#125;
+
+<span class="hljs-keyword">public</span> non-sealed <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SubA</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">SupClass</span> </span>&#123; <span class="hljs-comment">// 密封类子类要求必须具有non-sealed/sealed/final修饰</span>
+&#125;
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">final</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">SubB</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">SupClass</span> </span>&#123;
+&#125;</code></pre>
+<p>声明密封类属性只需要<code>ClassWriter</code>的<code>visitPermittedSubclass</code>，参数是子类全限定名。上面的<code>SupClass</code>字节码可以这样写入：</p>
+<pre><code class="hljs Java"><span class="hljs-comment">// cw是ClassWriter</span>
+cw.visitPermittedSubclass(<span class="hljs-string">&quot;SubA&quot;</span>);
+cw.visitPermittedSubclass(<span class="hljs-string">&quot;SubB&quot;</span>);</code></pre>
+<hr>
+<p>类的基本结构就到这里，下一期：类的结构（二），主要讲解枚举、记录等特殊的类结构。</p>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2022/02/13/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E6%B3%9B%E5%9E%8B/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：泛型</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+    <div class="valine-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <div id="valine_thread" class="valine-thread"></div>
+    </div>
+    <script type="text/javascript" src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script type="text/javascript" src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script type="text/javascript">
+      new Valine({
+        el: "#valine_thread",
+        appId: "mW2DHhwzDNYk9Gk1hsi4XJV7-gzGzoHsz",
+        appKey: "reCUh7XTXRmlDsR3YfbjreRb",
+        avatar: "mp",
+        placeholder: "发一条友善的评论吧~~",
+        notify: true,
+        visitor: true,
+        pageSize: 10,
+      });
+    </script>
+  
+
+  
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>10</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B1%BB%E9%9D%99%E6%80%81%E5%88%9D%E5%A7%8B%E5%8C%96%E6%96%B9%E6%B3%95"><span class="toc-number">1.</span> <span class="toc-text">类静态初始化方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0"><span class="toc-number">2.</span> <span class="toc-text">构造函数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B1%BB%E5%AD%97%E6%AE%B5%E7%9A%84%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">3.</span> <span class="toc-text">类字段的初始化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A1%A5%E6%8E%A5%E6%96%B9%E6%B3%95"><span class="toc-number">4.</span> <span class="toc-text">桥接方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%85%E9%83%A8%E7%B1%BB"><span class="toc-number">5.</span> <span class="toc-text">内部类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AF%86%E5%B0%81%E7%B1%BB"><span class="toc-number">6.</span> <span class="toc-text">密封类</span></a></li></ol>
+  </div>
+</section>
+
+
+      
+<section class="widet-notice widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-notice" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M512 945.02305225v28.15620663a24.27259221 24.27259221 0 0 1-24.27259221 24.27259335H394.0352a48.54518557 48.54518557 0 0 1-41.74885888-23.78714112l-110.68302222-184.47170332a132.04290333 132.04290333 0 0 1-17.47626667-48.54518557h118.4502511a200.97706667 200.97706667 0 0 1 76.21594113 14.56355556l20.38897777 133.49925888a48.54518557 48.54518557 0 0 0 36.40888888 27.67075555l16.01991111 2.91271112a24.27259221 24.27259221 0 0 1 20.38897778 25.72894889zM997.45185223 463.45481443a194.18074112 194.18074112 0 0 1-38.8361489 116.50844445 24.75804445 24.75804445 0 0 1-36.4088889 0l-34.95253333-34.95253333a24.27259221 24.27259221 0 0 1-2.91271111-30.58346667 97.09036999 97.09036999 0 0 0 0-106.79940665 24.27259221 24.27259221 0 0 1 2.91271111-30.58346666l34.95253333-34.95253334a24.75804445 24.75804445 0 0 1 18.93262223-7.28177777 26.2144 26.2144 0 0 1 17.47626667 9.70903665A194.18074112 194.18074112 0 0 1 997.45185223 463.45481443z m-194.18074112-388.36148111v776.72296335a48.54518557 48.54518557 0 0 1-48.54518556 48.54518443h-28.64165888a48.54518557 48.54518557 0 0 1-33.98163001-14.07810332l-145.63555556-143.20829668A291.27111111 291.27111111 0 0 0 342.57730333 657.63555556H172.18370333a145.63555556 145.63555556 0 0 1-145.63555556-145.63555556v-97.09036999a145.63555556 145.63555556 0 0 1 145.63555556-145.63555556h170.3936a291.27111111 291.27111111 0 0 0 206.31703779-85.43952668l145.63555555-143.20829554a48.54518557 48.54518557 0 0 1 33.98162888-14.07810446H754.72592555a48.54518557 48.54518557 0 0 1 48.54518556 48.54518555z" fill="currentColor"></path>
+</svg>
+    <span>NOTICE</span>
+  </div>
+  <div class="widget-body">
+    <p>本站所有文章都禁止以任何形式的抄袭或转载哦~</p>
+  </div>
+</section>
+
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (10)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://space.bilibili.com/443879411/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" class="icon icon-github"><path d="M800.768 237.216h-51.264l44.832-44.832c19.232-19.232 19.232-57.664 0-76.864s-57.664-19.232-76.864 0l-128.128 121.728h-153.76L307.456 115.52c-19.232-19.232-57.664-19.232-76.864 0s-19.232 57.664 0 76.864l44.832 44.832H224.16C134.464 237.216 64 307.68 64 397.376v345.952c0 96.096 70.464 166.56 160.16 166.56h570.144c89.696 0 160.16-70.464 160.16-160.16V397.376c6.4-89.696-64.064-160.16-153.76-160.16z m44.864 506.112a57.44 57.44 0 0 1-57.664 57.664H230.624a57.44 57.44 0 0 1-57.664-57.664v-339.52c0-32.032 25.632-57.664 57.664-57.664h557.344c32.032 0 57.664 25.632 57.664 57.664v339.52zM345.952 461.44a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z m333.12 0a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z"></path></svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2022 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>
