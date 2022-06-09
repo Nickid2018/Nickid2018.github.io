@@ -102,7 +102,7 @@
 
   <url>
     <loc>http://nickid2018.github.io/</loc>
-    <lastmod>2022-05-02</lastmod>
+    <lastmod>2022-06-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -110,21 +110,21 @@
   
   <url>
     <loc>http://nickid2018.github.io/tags/Java/</loc>
-    <lastmod>2022-05-02</lastmod>
+    <lastmod>2022-06-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>http://nickid2018.github.io/tags/ASM/</loc>
-    <lastmod>2022-05-02</lastmod>
+    <lastmod>2022-06-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>http://nickid2018.github.io/tags/JEP/</loc>
-    <lastmod>2022-05-02</lastmod>
+    <lastmod>2022-06-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
@@ -133,7 +133,7 @@
   
   <url>
     <loc>http://nickid2018.github.io/categories/Java/</loc>
-    <lastmod>2022-05-02</lastmod>
+    <lastmod>2022-06-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
