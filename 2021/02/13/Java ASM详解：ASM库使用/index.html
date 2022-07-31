@@ -299,7 +299,7 @@ classReader.accept(cv, ClassWriter.SKIP_CODE);</code></pre>
 <td style="text-align:center">VARARGS</td>
 <td style="text-align:center">0x0080</td>
 <td style="text-align:center">method</td>
-<td style="text-align:left">方法使用@SafeVarargs注释，与static或final连用</td>
+<td style="text-align:left">方法使用@SafeVarargs注解，与static或final连用</td>
 </tr>
 <tr>
 <td style="text-align:center">TRANSIENT</td>
@@ -341,7 +341,7 @@ classReader.accept(cv, ClassWriter.SKIP_CODE);</code></pre>
 <td style="text-align:center">ANNOTATION</td>
 <td style="text-align:center">0x2000</td>
 <td style="text-align:center">class</td>
-<td style="text-align:left">注释类型，与interface、abstract连用</td>
+<td style="text-align:left">注解类型，与interface、abstract连用</td>
 </tr>
 <tr>
 <td style="text-align:center">ENUM</td>
@@ -405,20 +405,20 @@ classReader.accept(cv, ClassWriter.SKIP_CODE);</code></pre>
 <pre><code class="hljs plaintext">visit [ visitSource ] [ visitModule ][ visitNestHost ][ visitPermittedSubclass ][ visitOuterClass ] ( visitAnnotation | visitTypeAnnotation | visitAttribute )* ( visitNestMember | visitInnerClass | visitRecordComponent | visitField | visitMethod )* visitEnd</code></pre>
 <p>不够清晰？那么下面简单说一下流程：</p>
 <p>首先访问<strong>类的信息</strong>（<code>visit</code>），传入的是<strong>类文件的版本</strong>（version，从V1_1到V16）、<strong>访问标志</strong>（access），<strong>类的全限定名</strong>（name），<strong>泛型签名</strong>（signature，可能为空），<strong>父类全限定名</strong>（无指定为java/lang/Object），<strong>实现接口列表</strong>（全限定名，可为空）</p>
-<p>之后访问<strong>注释信息</strong>（<code>visitAnnotation</code>），传入的是<strong>注释描述符</strong>（descriptor，这里可能包含有@Repeatable的注释类型，所以这里不是全限定名）和<strong>可见性</strong>（visible，@Retention定义的作用范围，为CLASS传入false，为RUNTIME传入true，为SOURCE不会写入类文件），该方法返回<code>AnnotationVisitor</code>。</p>
-<p>同时，访问<strong>泛型注释信息</strong>（<code>visitTypeAnnotation</code>），传入的是<strong>注释引用类型</strong>（typeRef，可能为TypeReference定义的几个值：CLASS_TYPE_PARAMETER \&lt;以泛型类的类型参数为目标的类型引用的类型，常量值0>，CLASS_EXTENDS \&lt;以泛型类的超类或它实现的接口之一为目标的类型引用的类型，常量值16>，CLASS_TYPE_PARAMETER_BOUND \&lt;以泛型类的类型参数的绑定为目标的类型引用的类型，常量值17>），<strong>泛型类引用路径</strong>（可为空），<strong>注释描述符</strong>和<strong>可见性</strong>，返回AnnotationVisitor。</p>
+<p>之后访问<strong>注解信息</strong>（<code>visitAnnotation</code>），传入的是<strong>注解描述符</strong>（descriptor，这里可能包含有@Repeatable的注解类型，所以这里不是全限定名）和<strong>可见性</strong>（visible，@Retention定义的作用范围，为CLASS传入false，为RUNTIME传入true，为SOURCE不会写入类文件），该方法返回<code>AnnotationVisitor</code>。</p>
+<p>同时，访问<strong>泛型注解信息</strong>（<code>visitTypeAnnotation</code>），传入的是<strong>注解引用类型</strong>（typeRef，可能为TypeReference定义的几个值：CLASS_TYPE_PARAMETER \&lt;以泛型类的类型参数为目标的类型引用的类型，常量值0>，CLASS_EXTENDS \&lt;以泛型类的超类或它实现的接口之一为目标的类型引用的类型，常量值16>，CLASS_TYPE_PARAMETER_BOUND \&lt;以泛型类的类型参数的绑定为目标的类型引用的类型，常量值17>），<strong>泛型类引用路径</strong>（可为空），<strong>注解描述符</strong>和<strong>可见性</strong>，返回AnnotationVisitor。</p>
 <p>接着，访问字段、方法和内部类。</p>
 <p>字段调用<code>visitField</code>方法，传入<strong>访问标志，字段名，描述符，泛型签名和默认值</strong>，返回<code>FieldVisitor</code>。</p>
 <p>方法调用<code>visitMethod</code>方法，传入<strong>访问标志，方法名，描述符，泛型签名和异常列表（全限定名）</strong>，返回<code>MethodVisitor</code>。</p>
 <p>内部类调用<code>visitInnerClass</code>方法，传入<strong>内部类全限定名，外部类全限定名，内部类名称</strong>（不带包路径，也就是没有“.”的名称，如果这个写错了IDE无法识别到这个类，但是不影响调用）<strong>，和访问标志</strong>（这个和类声明定义的标志不同，可以有static，这样类里面就不会带有this$0）。内部类调用指的不只是类中定义了内部类，还包括引用到了其他类的内部类。</p>
 <p>当所有信息都访问结束，调用<code>visitEnd</code>。</p>
 <p>这里的内容只是简单介绍了一下，具体的下文和接下来几篇专栏会写。</p>
-<h2 id="解析注释信息：AnnotationVisitor"><a href="#解析注释信息：AnnotationVisitor" class="headerlink" title="解析注释信息：AnnotationVisitor"></a>解析注释信息：AnnotationVisitor</h2><p>AnnotationVisitor用于解析注释信息，除了最后会调用的<code>visitEnd</code>外，其他都与注释类型本身定义的方法返回值有关。下面是不同的类型：</p>
-<p><code>visit</code>方法：传入注释方法名称和值，值必须是基本类型（基本数字、char及其数组，String和类）</p>
-<p><code>visitArray</code>方法：传入注释方法名称，返回另一个AnnotationVisitor。这个新的Visitor会被传入数组内的值，所有的name传入都为null。注意：visit一个基本数字或char数组等价于使用visitArray，但是在ClassReader解析中不会调用visitArray而是直接调用visit。</p>
-<p><code>visitAnnotation</code>方法：传入注释方法名称和值的描述符，返回的是值的AnnotationVisitor。</p>
-<p><code>visitEnum</code>方法：传入注释方法名、值的描述符和枚举名称。</p>
-<p>对于带有<code>@Repeatable</code>注释的注释类型，在Java使用反射时会返回容器注释，也就是在普通编写时有两种等价的编写方式。在ASM中，这两种方式也等价，写入按照第一种处理：</p>
+<h2 id="解析注解信息：AnnotationVisitor"><a href="#解析注解信息：AnnotationVisitor" class="headerlink" title="解析注解信息：AnnotationVisitor"></a>解析注解信息：AnnotationVisitor</h2><p>AnnotationVisitor用于解析注解信息，除了最后会调用的<code>visitEnd</code>外，其他都与注解类型本身定义的方法返回值有关。下面是不同的类型：</p>
+<p><code>visit</code>方法：传入注解方法名称和值，值必须是基本类型（基本数字、char及其数组，String和类）</p>
+<p><code>visitArray</code>方法：传入注解方法名称，返回另一个AnnotationVisitor。这个新的Visitor会被传入数组内的值，所有的name传入都为null。注意：visit一个基本数字或char数组等价于使用visitArray，但是在ClassReader解析中不会调用visitArray而是直接调用visit。</p>
+<p><code>visitAnnotation</code>方法：传入注解方法名称和值的描述符，返回的是值的AnnotationVisitor。</p>
+<p><code>visitEnum</code>方法：传入注解方法名、值的描述符和枚举名称。</p>
+<p>对于带有<code>@Repeatable</code>注解的注解类型，在Java使用反射时会返回容器注解，也就是在普通编写时有两种等价的编写方式。在ASM中，这两种方式也等价，写入按照第一种处理：</p>
 <pre><code class="hljs Java"><span class="hljs-meta">@T</span>.Ts(value = &#123; <span class="hljs-meta">@T(value = &quot;ss&quot;)</span>, <span class="hljs-meta">@T(value = &quot;dd&quot;)</span> &#125;)
 <span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">A</span> </span>&#123; ... &#125;
 
@@ -426,11 +426,11 @@ classReader.accept(cv, ClassWriter.SKIP_CODE);</code></pre>
 <span class="hljs-meta">@T(value = &quot;dd&quot;)</span>
 <span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">A</span> </span>&#123; ... &#125;</code></pre>
 <blockquote>
-<p>对于带有@Repeatable注释的注释类型，这两种使用方式在反射和ASM中完全等价（T.Ts是T的注释容器）</p>
+<p>对于带有@Repeatable注解的注解类型，这两种使用方式在反射和ASM中完全等价（T.Ts是T的注解容器）</p>
 </blockquote>
-<h2 id="解析字段：FieldVisitor"><a href="#解析字段：FieldVisitor" class="headerlink" title="解析字段：FieldVisitor"></a>解析字段：FieldVisitor</h2><p>FieldVisitor的构成比较简单，除了<code>visitEnd</code>在最后调用外，比较常用的就是<code>visitAnnotation</code>和<code>visitTypeAnnotation</code>。这些方法的使用都和ClassVisitor的使用差不多，唯一的不同是visitTypeAnnotation的注释引用类型必为<code>FIELD</code>（常量值19）</p>
+<h2 id="解析字段：FieldVisitor"><a href="#解析字段：FieldVisitor" class="headerlink" title="解析字段：FieldVisitor"></a>解析字段：FieldVisitor</h2><p>FieldVisitor的构成比较简单，除了<code>visitEnd</code>在最后调用外，比较常用的就是<code>visitAnnotation</code>和<code>visitTypeAnnotation</code>。这些方法的使用都和ClassVisitor的使用差不多，唯一的不同是visitTypeAnnotation的注解引用类型必为<code>FIELD</code>（常量值19）</p>
 <p>到此简单的解析就讲完了。什么？还差一个MethodVisitor？这是我们之后要说的重要内容，所以这里不会提到它。接下来，是应用ASM的例子。</p>
-<h2 id="使用范例：解析一个类"><a href="#使用范例：解析一个类" class="headerlink" title="使用范例：解析一个类"></a>使用范例：解析一个类</h2><p>解析一个类需要从文章最开始说的ClassReader写起，它能将一个类的字节码解析并且进行Visitor模式调用。在下面的范例中，我们将尝试读取一个类的名称、字段和注释。</p>
+<h2 id="使用范例：解析一个类"><a href="#使用范例：解析一个类" class="headerlink" title="使用范例：解析一个类"></a>使用范例：解析一个类</h2><p>解析一个类需要从文章最开始说的ClassReader写起，它能将一个类的字节码解析并且进行Visitor模式调用。在下面的范例中，我们将尝试读取一个类的名称、字段和注解。</p>
 <p>首先是一个测试类的编写，之后用javac编译。</p>
 <pre><code class="hljs Java"><span class="hljs-keyword">package</span> com.github.nickid2018.asm;
 
@@ -455,20 +455,20 @@ classReader.accept(cv, ClassWriter.SKIP_CODE);</code></pre>
 	System.out.println(<span class="hljs-string">&quot;字段: &quot;</span> + name + <span class="hljs-string">&quot; 描述符: &quot;</span> + descriptor);
 	<span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> FieldParser();
 &#125;</code></pre>
-<p>创建FieldParser继承FieldVisitor解析字段。在读取字段时，我们还需要读取字段中的注释，所以需要覆盖visitAnnotation，返回我们自己的AnnotationVisitor。</p>
+<p>创建FieldParser继承FieldVisitor解析字段。在读取字段时，我们还需要读取字段中的注解，所以需要覆盖visitAnnotation，返回我们自己的AnnotationVisitor。</p>
 <pre><code class="hljs Java"><span class="hljs-meta">@Override</span>
 <span class="hljs-function"><span class="hljs-keyword">public</span> AnnotationVisitor <span class="hljs-title">visitAnnotation</span><span class="hljs-params">(String descriptor, <span class="hljs-keyword">boolean</span> visible)</span> </span>&#123;
-	System.out.println(<span class="hljs-string">&quot;注释: &quot;</span> + descriptor + <span class="hljs-string">&quot; 可见性: &quot;</span> + visible);
+	System.out.println(<span class="hljs-string">&quot;注解: &quot;</span> + descriptor + <span class="hljs-string">&quot; 可见性: &quot;</span> + visible);
 	<span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> AnnotationParser();
 &#125;</code></pre>
-<p>由于@Deprecated不具有任何的注释方法，我们创建的AnnotationParser可以不覆盖任何方法。</p>
+<p>由于@Deprecated不具有任何的注解方法，我们创建的AnnotationParser可以不覆盖任何方法。</p>
 <p>这些访问器写完之后，就要递呈给ClassReader开始解析，代码如下：</p>
 <pre><code class="hljs Java">ClassParser cv = <span class="hljs-keyword">new</span> ClassParser();
 reader.accept(cv, <span class="hljs-number">0</span>);</code></pre>
 <p>现在，我们的解析程序就完成了。运行结果如下：</p>
 <pre><code class="hljs plaintext">类名: com/github/nickid2018/asm/TestClass
 字段: string 描述符: Ljava/lang/String;
-注释: Ljava/lang/Deprecated; 可见性: true
+注解: Ljava/lang/Deprecated; 可见性: true
 字段: integer 描述符: I</code></pre>
 <p>代码样例：<a target="_blank" rel="noopener" href="https://paste.ubuntu.com/p/8d6jN8jVzr/">https://paste.ubuntu.com/p/8d6jN8jVzr/</a></p>
 <h2 id="使用范例：生成一个类"><a href="#使用范例：生成一个类" class="headerlink" title="使用范例：生成一个类"></a>使用范例：生成一个类</h2><p>生成类我们用到的是ClassWriter，它本质上就是ClassVisitor，我们只要用可以构建类的数据按照刚才的格式传给它就能生成对应的类。</p>
@@ -484,13 +484,13 @@ reader.accept(cv, <span class="hljs-number">0</span>);</code></pre>
 &#125;</code></pre>
 <p>首先创建ClassWriter实例：</p>
 <pre><code class="hljs Java">ClassWriter cw = <span class="hljs-keyword">new</span> ClassWriter(<span class="hljs-number">0</span>);</code></pre>
-<p>接着，创建类，用到的正是visit方法。由于没有指定父类，这个类的父类将被强行指定为java/lang/Object，接口、抽象类、注释类型也如此。这个类没有实现任何接口，所以interfaces可以传null。同理，它没有泛型，所以泛型的signature为null。访问标志是public，再加上super，整体下来就是这句：</p>
+<p>接着，创建类，用到的正是visit方法。由于没有指定父类，这个类的父类将被强行指定为java/lang/Object，接口、抽象类、注解类型也如此。这个类没有实现任何接口，所以interfaces可以传null。同理，它没有泛型，所以泛型的signature为null。访问标志是public，再加上super，整体下来就是这句：</p>
 <pre><code class="hljs Java">cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, <span class="hljs-string">&quot;com/github/nickid2018/asm/WillGenerate&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;java/lang/Object&quot;</span>,<span class="hljs-keyword">null</span>);</code></pre>
 <p>接下来我们需要创建默认构造函数。javac编译时会把没有定义构造函数的普通类加入默认的构造函数。这种构造函数里面包括了父类构造函数调用和本身的非基本类型字段赋值。如果没有非基本类型字段赋值，那么它的代码就像这样：</p>
 <pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">WillGenerate</span><span class="hljs-params">()</span> </span>&#123;
 	<span class="hljs-keyword">super</span>();
 &#125;</code></pre>
-<p>由于这篇专栏主要是有关于类、字段、注释的解析，方法的解析暂时先不讲，所以这里只给出它的写入代码，不做讲解。</p>
+<p>由于这篇专栏主要是有关于类、字段、注解的解析，方法的解析暂时先不讲，所以这里只给出它的写入代码，不做讲解。</p>
 <pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">writeDefaultInit</span><span class="hljs-params">(ClassWriter cw)</span> </span>&#123;
 	MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, <span class="hljs-string">&quot;&lt;init&gt;&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
 	mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>);
@@ -501,7 +501,7 @@ reader.accept(cv, <span class="hljs-number">0</span>);</code></pre>
 &#125;</code></pre>
 <p>接下来写入HELLO这个字段。它的访问标志是public+static+final，由于它是弃用的，它也可以加上deprecated这个ASM自己定义的Access Flag。它的类型是int，所以描述符是I。没有泛型，所以signature为null。有默认值，为0。所以它的写入像这样：</p>
 <pre><code class="hljs Java">FieldVisitor fv = cw.visitField(ACC_PUBLIC + ACC_FINAL + ACC_STATIC + ACC_DEPRECATED, <span class="hljs-string">&quot;HELLO&quot;</span>, <span class="hljs-string">&quot;I&quot;</span>, <span class="hljs-keyword">null</span>, (Integer) <span class="hljs-number">0</span>);</code></pre>
-<p>保留这个FieldVisitor，因为它还具有一个注释@Deprecated。注释类型的描述符为Ljava/lang/Deprecated;。又因为@Deprecated的作用范围是RUNTIME，所以可见性为true，代码如下：</p>
+<p>保留这个FieldVisitor，因为它还具有一个注解@Deprecated。注解类型的描述符为Ljava/lang/Deprecated;。又因为@Deprecated的作用范围是RUNTIME，所以可见性为true，代码如下：</p>
 <pre><code class="hljs Java">AnnotationVisitor av = fv.visitAnnotation(<span class="hljs-string">&quot;Ljava/lang/Deprecated;&quot;</span>, <span class="hljs-keyword">true</span>);</code></pre>
 <p>这时，这个字段就写入信息就完成了，调用visitEnd。</p>
 <pre><code class="hljs Java">av.visitEnd();
@@ -679,7 +679,7 @@ ClassReader cr  = <span class="hljs-keyword">new</span> ClassReader(<span class=
     <span>TOC</span>
   </div>
   <div class="widget-body">
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AF%BB%E5%8F%96%E7%9A%84%E8%B5%B7%E6%BA%90%EF%BC%9AClassReader"><span class="toc-number">1.</span> <span class="toc-text">读取的起源：ClassReader</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E6%A0%87%E5%BF%97%EF%BC%88Access-Flag%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">访问标志（Access Flag）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E7%B1%BB%E7%9A%84%E4%BF%A1%E6%81%AF%EF%BC%9AClassVisitor"><span class="toc-number">3.</span> <span class="toc-text">解析类的信息：ClassVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E6%B3%A8%E9%87%8A%E4%BF%A1%E6%81%AF%EF%BC%9AAnnotationVisitor"><span class="toc-number">4.</span> <span class="toc-text">解析注释信息：AnnotationVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E5%AD%97%E6%AE%B5%EF%BC%9AFieldVisitor"><span class="toc-number">5.</span> <span class="toc-text">解析字段：FieldVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E8%A7%A3%E6%9E%90%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">6.</span> <span class="toc-text">使用范例：解析一个类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E7%94%9F%E6%88%90%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">7.</span> <span class="toc-text">使用范例：生成一个类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E4%BF%AE%E6%94%B9%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">8.</span> <span class="toc-text">使用范例：修改一个类</span></a></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AF%BB%E5%8F%96%E7%9A%84%E8%B5%B7%E6%BA%90%EF%BC%9AClassReader"><span class="toc-number">1.</span> <span class="toc-text">读取的起源：ClassReader</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E6%A0%87%E5%BF%97%EF%BC%88Access-Flag%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">访问标志（Access Flag）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E7%B1%BB%E7%9A%84%E4%BF%A1%E6%81%AF%EF%BC%9AClassVisitor"><span class="toc-number">3.</span> <span class="toc-text">解析类的信息：ClassVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E6%B3%A8%E8%A7%A3%E4%BF%A1%E6%81%AF%EF%BC%9AAnnotationVisitor"><span class="toc-number">4.</span> <span class="toc-text">解析注解信息：AnnotationVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90%E5%AD%97%E6%AE%B5%EF%BC%9AFieldVisitor"><span class="toc-number">5.</span> <span class="toc-text">解析字段：FieldVisitor</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E8%A7%A3%E6%9E%90%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">6.</span> <span class="toc-text">使用范例：解析一个类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E7%94%9F%E6%88%90%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">7.</span> <span class="toc-text">使用范例：生成一个类</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%8C%83%E4%BE%8B%EF%BC%9A%E4%BF%AE%E6%94%B9%E4%B8%80%E4%B8%AA%E7%B1%BB"><span class="toc-number">8.</span> <span class="toc-text">使用范例：修改一个类</span></a></li></ol>
   </div>
 </section>
 
