@@ -83,14 +83,14 @@ classReader.accept(cv, ClassWriter.SKIP_CODE);
 | VOLATILE | 0x0040 | field | volatile字段，在内存中不会缓存 |
 | BRIDGE | 0x0040 | method | “桥”方法，由编译器生成 |
 | STATIC_PHASE | 0x0040 | module requires | 指示模块在编译时必须但运行时可选 |
-| VARARGS | 0x0080 | method | 方法使用@SafeVarargs注释，与static或final连用 |
+| VARARGS | 0x0080 | method | 方法使用@SafeVarargs注解，与static或final连用 |
 | TRANSIENT | 0x0080 | field | 被默认序列化忽略 |
 | NATIVE | 0x0100 | method | 本地方法（JNI） |
 | INTERFACE | 0x0200 | class | 声明类为接口，与abstract连用 |
 | ABSTRACT | 0x0400 | class, method | 定义抽象类或抽象方法 |
 | STRICT | 0x0800 | method | 严格浮点数定义（strictfp），可能在Java 17失效（？） |
 | SYNTHETIC | 0x1000 | class, field, method, parameter, module * | 既不属于显性声明也不属于隐式声明，通常是编译器优化生成 |
-| ANNOTATION | 0x2000 | class | 注释类型，与interface、abstract连用 |
+| ANNOTATION | 0x2000 | class | 注解类型，与interface、abstract连用 |
 | ENUM | 0x4000 | class(?) field inner | 枚举类或枚举字段 |
 | MANDATED | 0x8000 | field, method, parameter, module, module * | 隐式声明的数据 |
 | MODULE | 0x8000 | class | 声明这个类是模块定义类 |
@@ -132,9 +132,9 @@ visit [ visitSource ] [ visitModule ][ visitNestHost ][ visitPermittedSubclass ]
 
 首先访问**类的信息**（`visit`），传入的是**类文件的版本**（version，从V1_1到V16）、**访问标志**（access），**类的全限定名**（name），**泛型签名**（signature，可能为空），**父类全限定名**（无指定为java/lang/Object），**实现接口列表**（全限定名，可为空）
 
-之后访问**注释信息**（`visitAnnotation`），传入的是**注释描述符**（descriptor，这里可能包含有@Repeatable的注释类型，所以这里不是全限定名）和**可见性**（visible，@Retention定义的作用范围，为CLASS传入false，为RUNTIME传入true，为SOURCE不会写入类文件），该方法返回`AnnotationVisitor`。
+之后访问**注解信息**（`visitAnnotation`），传入的是**注解描述符**（descriptor，这里可能包含有@Repeatable的注解类型，所以这里不是全限定名）和**可见性**（visible，@Retention定义的作用范围，为CLASS传入false，为RUNTIME传入true，为SOURCE不会写入类文件），该方法返回`AnnotationVisitor`。
 
-同时，访问**泛型注释信息**（`visitTypeAnnotation`），传入的是**注释引用类型**（typeRef，可能为TypeReference定义的几个值：CLASS\_TYPE\_PARAMETER \<以泛型类的类型参数为目标的类型引用的类型，常量值0\>，CLASS\_EXTENDS \<以泛型类的超类或它实现的接口之一为目标的类型引用的类型，常量值16\>，CLASS\_TYPE\_PARAMETER\_BOUND \<以泛型类的类型参数的绑定为目标的类型引用的类型，常量值17\>），**泛型类引用路径**（可为空），**注释描述符**和**可见性**，返回AnnotationVisitor。
+同时，访问**泛型注解信息**（`visitTypeAnnotation`），传入的是**注解引用类型**（typeRef，可能为TypeReference定义的几个值：CLASS\_TYPE\_PARAMETER \<以泛型类的类型参数为目标的类型引用的类型，常量值0\>，CLASS\_EXTENDS \<以泛型类的超类或它实现的接口之一为目标的类型引用的类型，常量值16\>，CLASS\_TYPE\_PARAMETER\_BOUND \<以泛型类的类型参数的绑定为目标的类型引用的类型，常量值17\>），**泛型类引用路径**（可为空），**注解描述符**和**可见性**，返回AnnotationVisitor。
 
 接着，访问字段、方法和内部类。
 
@@ -148,19 +148,19 @@ visit [ visitSource ] [ visitModule ][ visitNestHost ][ visitPermittedSubclass ]
 
 这里的内容只是简单介绍了一下，具体的下文和接下来几篇专栏会写。
 
-## 解析注释信息：AnnotationVisitor
+## 解析注解信息：AnnotationVisitor
 
-AnnotationVisitor用于解析注释信息，除了最后会调用的`visitEnd`外，其他都与注释类型本身定义的方法返回值有关。下面是不同的类型：
+AnnotationVisitor用于解析注解信息，除了最后会调用的`visitEnd`外，其他都与注解类型本身定义的方法返回值有关。下面是不同的类型：
 
-`visit`方法：传入注释方法名称和值，值必须是基本类型（基本数字、char及其数组，String和类）
+`visit`方法：传入注解方法名称和值，值必须是基本类型（基本数字、char及其数组，String和类）
 
-`visitArray`方法：传入注释方法名称，返回另一个AnnotationVisitor。这个新的Visitor会被传入数组内的值，所有的name传入都为null。注意：visit一个基本数字或char数组等价于使用visitArray，但是在ClassReader解析中不会调用visitArray而是直接调用visit。
+`visitArray`方法：传入注解方法名称，返回另一个AnnotationVisitor。这个新的Visitor会被传入数组内的值，所有的name传入都为null。注意：visit一个基本数字或char数组等价于使用visitArray，但是在ClassReader解析中不会调用visitArray而是直接调用visit。
 
-`visitAnnotation`方法：传入注释方法名称和值的描述符，返回的是值的AnnotationVisitor。
+`visitAnnotation`方法：传入注解方法名称和值的描述符，返回的是值的AnnotationVisitor。
 
-`visitEnum`方法：传入注释方法名、值的描述符和枚举名称。
+`visitEnum`方法：传入注解方法名、值的描述符和枚举名称。
 
-对于带有`@Repeatable`注释的注释类型，在Java使用反射时会返回容器注释，也就是在普通编写时有两种等价的编写方式。在ASM中，这两种方式也等价，写入按照第一种处理：
+对于带有`@Repeatable`注解的注解类型，在Java使用反射时会返回容器注解，也就是在普通编写时有两种等价的编写方式。在ASM中，这两种方式也等价，写入按照第一种处理：
 
 ```Java
 @T.Ts(value = { @T(value = "ss"), @T(value = "dd") })
@@ -171,18 +171,18 @@ public class A { ... }
 public class A { ... }
 ```
 
->对于带有@Repeatable注释的注释类型，这两种使用方式在反射和ASM中完全等价（T.Ts是T的注释容器）
+>对于带有@Repeatable注解的注解类型，这两种使用方式在反射和ASM中完全等价（T.Ts是T的注解容器）
 
 
 ## 解析字段：FieldVisitor
 
-FieldVisitor的构成比较简单，除了`visitEnd`在最后调用外，比较常用的就是`visitAnnotation`和`visitTypeAnnotation`。这些方法的使用都和ClassVisitor的使用差不多，唯一的不同是visitTypeAnnotation的注释引用类型必为`FIELD`（常量值19）
+FieldVisitor的构成比较简单，除了`visitEnd`在最后调用外，比较常用的就是`visitAnnotation`和`visitTypeAnnotation`。这些方法的使用都和ClassVisitor的使用差不多，唯一的不同是visitTypeAnnotation的注解引用类型必为`FIELD`（常量值19）
 
 到此简单的解析就讲完了。什么？还差一个MethodVisitor？这是我们之后要说的重要内容，所以这里不会提到它。接下来，是应用ASM的例子。
 
 ## 使用范例：解析一个类
 
-解析一个类需要从文章最开始说的ClassReader写起，它能将一个类的字节码解析并且进行Visitor模式调用。在下面的范例中，我们将尝试读取一个类的名称、字段和注释。
+解析一个类需要从文章最开始说的ClassReader写起，它能将一个类的字节码解析并且进行Visitor模式调用。在下面的范例中，我们将尝试读取一个类的名称、字段和注解。
 
 首先是一个测试类的编写，之后用javac编译。
 
@@ -221,17 +221,17 @@ public FieldVisitor visitField(int access, String name, String descriptor, Strin
 }
 ```
 
-创建FieldParser继承FieldVisitor解析字段。在读取字段时，我们还需要读取字段中的注释，所以需要覆盖visitAnnotation，返回我们自己的AnnotationVisitor。
+创建FieldParser继承FieldVisitor解析字段。在读取字段时，我们还需要读取字段中的注解，所以需要覆盖visitAnnotation，返回我们自己的AnnotationVisitor。
 
 ```Java
 @Override
 public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
-	System.out.println("注释: " + descriptor + " 可见性: " + visible);
+	System.out.println("注解: " + descriptor + " 可见性: " + visible);
 	return new AnnotationParser();
 }
 ```
 
-由于@Deprecated不具有任何的注释方法，我们创建的AnnotationParser可以不覆盖任何方法。
+由于@Deprecated不具有任何的注解方法，我们创建的AnnotationParser可以不覆盖任何方法。
 
 这些访问器写完之后，就要递呈给ClassReader开始解析，代码如下：
 
@@ -245,7 +245,7 @@ reader.accept(cv, 0);
 ```
 类名: com/github/nickid2018/asm/TestClass
 字段: string 描述符: Ljava/lang/String;
-注释: Ljava/lang/Deprecated; 可见性: true
+注解: Ljava/lang/Deprecated; 可见性: true
 字段: integer 描述符: I
 ```
 
@@ -276,7 +276,7 @@ public class WillGenerate {
 ClassWriter cw = new ClassWriter(0);
 ```
 
-接着，创建类，用到的正是visit方法。由于没有指定父类，这个类的父类将被强行指定为java/lang/Object，接口、抽象类、注释类型也如此。这个类没有实现任何接口，所以interfaces可以传null。同理，它没有泛型，所以泛型的signature为null。访问标志是public，再加上super，整体下来就是这句：
+接着，创建类，用到的正是visit方法。由于没有指定父类，这个类的父类将被强行指定为java/lang/Object，接口、抽象类、注解类型也如此。这个类没有实现任何接口，所以interfaces可以传null。同理，它没有泛型，所以泛型的signature为null。访问标志是public，再加上super，整体下来就是这句：
 
 ```Java
 cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, "com/github/nickid2018/asm/WillGenerate", null, "java/lang/Object",null);
@@ -290,7 +290,7 @@ public WillGenerate() {
 }
 ```
 
-由于这篇专栏主要是有关于类、字段、注释的解析，方法的解析暂时先不讲，所以这里只给出它的写入代码，不做讲解。
+由于这篇专栏主要是有关于类、字段、注解的解析，方法的解析暂时先不讲，所以这里只给出它的写入代码，不做讲解。
 
 ```Java
 public static void writeDefaultInit(ClassWriter cw) {
@@ -309,7 +309,7 @@ public static void writeDefaultInit(ClassWriter cw) {
 FieldVisitor fv = cw.visitField(ACC_PUBLIC + ACC_FINAL + ACC_STATIC + ACC_DEPRECATED, "HELLO", "I", null, (Integer) 0);
 ```
 
-保留这个FieldVisitor，因为它还具有一个注释@Deprecated。注释类型的描述符为Ljava/lang/Deprecated;。又因为@Deprecated的作用范围是RUNTIME，所以可见性为true，代码如下：
+保留这个FieldVisitor，因为它还具有一个注解@Deprecated。注解类型的描述符为Ljava/lang/Deprecated;。又因为@Deprecated的作用范围是RUNTIME，所以可见性为true，代码如下：
 
 ```Java
 AnnotationVisitor av = fv.visitAnnotation("Ljava/lang/Deprecated;", true);

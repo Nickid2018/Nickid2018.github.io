@@ -323,6 +323,8 @@ putstatic用于修改静态字段的值。如果它作用目标是一个非静�
 
 调用方法的字节码共有五个：invokevirtual，invokespecial，invokestatic，invokeinterface和invokedynamic。invokedynamic使用了BSM（BootStrap Method），讲解起来很复杂，所以这个要单独分出来一篇文章去讲。这篇文章主要讨论前四个。
 
+这些字节码使用的是visitMethodInsn，此方法的最后一个参数代表此方法**是不是在一个接口内定义**，而不是是否为接口抽象方法。(具体来说是常量池内CONSTANT_MethodRef和CONSTANT_InterfaceMethodRef的区别)
+
 ### invokevirtual
 
 ```Java
