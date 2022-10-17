@@ -40,7 +40,7 @@
 
   
 
-  <title>Java ASM详解：模块 | Nickid2018的博客</title>
+  <title>Java ASM详解：类的结构（二） | Nickid2018的博客</title>
 
   
 
@@ -121,7 +121,7 @@
     <div class="header-content">
       <div class="post-text layout-block">
         <div class="layout-margin">
-          <h1 class="title-wrap">Java ASM详解：模块</h1>
+          <h1 class="title-wrap">Java ASM详解：类的结构（二）</h1>
           <h2 class="title-sub-wrap">
             <strong>Nickid2018</strong>
             <span>发布于</span>
@@ -363,13 +363,13 @@ mv.visitEnd();</code></pre>
 <pre><code class="hljs java">MethodVisitor mv = cw.visitMethod(ACC_PUBLIC + ACC_FINAL, <span class="hljs-string">&quot;toString&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
 mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// this</span>
 mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;toString&quot;</span>,  <span class="hljs-comment">// 方法名</span>
-<span class="hljs-string">&quot;(LTest;)Ljava/lang/String;&quot;</span>, <span class="hljs-comment">// 方法描述符</span>
-<span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/runtime/ObjectMethods&quot;</span>, <span class="hljs-string">&quot;bootstrap&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">false</span>),  <span class="hljs-comment">// 引导方法</span>
-<span class="hljs-keyword">new</span> Object[]&#123;
-Type.getType(<span class="hljs-string">&quot;Lio/github/nickid2018/asmtest/ASMMain$A;&quot;</span>), <span class="hljs-comment">// 记录类对象</span>
-<span class="hljs-string">&quot;a&quot;</span>,  <span class="hljs-comment">// 实例字段名称序列</span>
-<span class="hljs-keyword">new</span> Handle(H_GETFIELD, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;a&quot;</span>, <span class="hljs-string">&quot;I&quot;</span>, <span class="hljs-keyword">false</span>) <span class="hljs-comment">// 字段a的句柄</span>
-&#125;);
+        <span class="hljs-string">&quot;(LTest;)Ljava/lang/String;&quot;</span>, <span class="hljs-comment">// 方法描述符</span>
+        <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/runtime/ObjectMethods&quot;</span>, <span class="hljs-string">&quot;bootstrap&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/TypeDescriptor;Ljava/lang/Class;Ljava/lang/String;[Ljava/lang/invoke/MethodHandle;)Ljava/lang/Object;&quot;</span>, <span class="hljs-keyword">false</span>),  <span class="hljs-comment">// 引导方法</span>
+        <span class="hljs-keyword">new</span> Object[]&#123;
+            Type.getType(<span class="hljs-string">&quot;Lio/github/nickid2018/asmtest/ASMMain$A;&quot;</span>), <span class="hljs-comment">// 记录类对象</span>
+            <span class="hljs-string">&quot;a&quot;</span>,  <span class="hljs-comment">// 实例字段名称序列</span>
+            <span class="hljs-keyword">new</span> Handle(H_GETFIELD, <span class="hljs-string">&quot;Test&quot;</span>, <span class="hljs-string">&quot;a&quot;</span>, <span class="hljs-string">&quot;I&quot;</span>, <span class="hljs-keyword">false</span>) <span class="hljs-comment">// 字段a的句柄</span>
+        &#125;);
 mv.visitInsn(ARETURN);
 mv.visitMaxs(<span class="hljs-number">1</span>, <span class="hljs-number">1</span>);
 mv.visitEnd();</code></pre>
