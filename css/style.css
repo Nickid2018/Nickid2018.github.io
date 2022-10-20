@@ -927,7 +927,7 @@ html.show-mobile-nav .navbar-list {
 }
 .markdown-body pre,
 .markdown-body code {
-  font-family: "Source Code Pro", Consolas, Monaco, Menlo, Consolas, monospace;
+  font-family: "Consolas", "黑体", Monaco, Menlo, Consolas, monospace;
 }
 .markdown-body code {
   padding: 0 0.3em;
