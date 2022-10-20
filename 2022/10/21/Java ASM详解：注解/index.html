@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google-site-verification" content="7KjHJEhAPUbzDXLRtyq2yOGm2KCFVvp5YN588Uf9xNw" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="theme-color" content="#3367D6"/>
+  <link rel="apple-touch-icon" href="/icons-192.png">
+  <link rel="manifest" href="/manifest.json">
+  <!-- 百度收录，真tmzz -->
+  <script>
+  (function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https'){
+   bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+  }
+  else{
+  bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+  }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+  })();
+  </script>
+  
+  <meta name="generator" content="Hexo 5.4.0">
+
+  
+
+  
+
+  
+    <meta name="author" content="Nickid2018">
+  
+
+  
+
+  
+
+  
+
+  <title>Java ASM详解：注解 | Nickid2018的博客</title>
+
+  
+
+  
+    <link rel="shortcut icon" href="/favicon.ico">
+  
+
+  
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@1.1.3/index.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlightjs@9.16.2/styles/monokai.css">
+  
+
+  
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><link rel="alternate" href="/atom.xml" title="Nickid2018的博客" type="application/atom+xml">
+</head>
+<body>
+  <div class="root-container">
+    
+<!-- header container -->
+<header class="header-container post">
+  
+    <div class="post-image" style="background-image: url(/banner.png)"></div>
+  
+
+  <!-- navbar -->
+<nav class="navbar">
+  <div class="navbar-content">
+    <!-- logo -->
+    <div class="navbar-logo">
+      <a href="/">
+        
+          Nickid2018的博客
+        
+      </a>
+    </div>
+    <!-- link -->
+    <div class="navbar-link">
+      <div class="navbar-btn">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+      <ul class="navbar-list">
+        
+          <li class="navbar-list-item"><a href="/">首页</a></li>
+        
+          <li class="navbar-list-item"><a href="/games">休闲小游戏</a></li>
+        
+          <li class="navbar-list-item"><a href="/links">友链</a></li>
+        
+          <li class="navbar-list-item"><a href="/about">关于</a></li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+
+  
+  
+    <div class="header-content">
+      <div class="post-text layout-block">
+        <div class="layout-margin">
+          <h1 class="title-wrap">Java ASM详解：注解</h1>
+          <h2 class="title-sub-wrap">
+            <strong>Nickid2018</strong>
+            <span>发布于</span>
+            <time  class="article-date" datetime="2022-10-21T00:00:00.000Z" itemprop="datePublished">2022-10-21</time>
+          </h2>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/categories/Java/">📒 Java</a></li>
+  
+</ul>
+          <ul class="wrap-list dark">
+  
+    <li><a href="/tags/Java/">🏷️ Java</a></li>
+  
+    <li><a href="/tags/ASM/">🏷️ ASM</a></li>
+  
+</ul>
+        </div>
+      </div>
+    </div>
+  
+
+  
+  
+  
+</header>
+
+    <!-- 文章 -->
+
+<!-- 文章内容 -->
+<div class="body-container">
+  <article class="content-container layout-block post-container">
+    <div class="article-info">
+      
+      
+      
+      
+      <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
+        <p>在 Java 语言中，<strong>注解</strong>（Annotation）是很重要的一部分。它的存在让许多代码变得简洁。与<strong>注解执行器</strong>（Annotation Processor）结合之后，它能发挥出意想不到的功能。这篇文章就将讲述注解是什么写入在字节码中的。</p>
+<blockquote>
+<p>注解类型的定义在前文（类的结构二）中已经写过了，如果不了解注解类型的写入可以先查看那一篇文章。</p>
+</blockquote>
+<h2 id="写入注解信息"><a href="#写入注解信息" class="headerlink" title="写入注解信息"></a>写入注解信息</h2><p>写入注解信息需要用到<code>AnnotationVisitor</code>这个类，它含有的方法支持我们对注解添加信息。</p>
+<h3 id="写入常量"><a href="#写入常量" class="headerlink" title="写入常量"></a>写入常量</h3><p>写入常量需要使用<code>visit</code>方法，它的第一个参数代表注解属性的名称，第二个参数代表值。可以写入的常量类型有：8种基本类型、字符串和 Type 对象（不包括方法描述符）。</p>
+<h3 id="写入枚举常量"><a href="#写入枚举常量" class="headerlink" title="写入枚举常量"></a>写入枚举常量</h3><p>写入枚举常量需要使用<code>visitEnum</code>方法，第一个参数仍然是注解属性的名称，第二个是枚举对象的<strong>类型描述符</strong>，第三个是枚举对象的名称。</p>
+<h3 id="写入其他注解类型"><a href="#写入其他注解类型" class="headerlink" title="写入其他注解类型"></a>写入其他注解类型</h3><p>写入其他注解类型对象需要使用<code>visitAnnotation</code>方法，第一个参数是注解属性名称，第二个是要写入的注解类型的<strong>类型描述符</strong>。这个方法返回一个新的<code>AnnotationVisitor</code>，使用这个新的 visitor 可以填充要写入的注解类型对象的信息。</p>
+<p>假如说我们要写入下面的注解：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 省略 Target 等描述注释</span>
+<span class="hljs-meta">@interface</span> TestAnno &#123;
+    <span class="hljs-function">String <span class="hljs-title">testStr</span><span class="hljs-params">()</span></span>;
+    Class&lt;?&gt; testClass();
+&#125;
+
+<span class="hljs-meta">@interface</span> Test &#123;
+    <span class="hljs-function">TestEnum <span class="hljs-title">testEnum</span><span class="hljs-params">()</span></span>;
+    <span class="hljs-function">TestAnno <span class="hljs-title">testAnnotation</span><span class="hljs-params">()</span></span>;
+&#125;
+
+<span class="hljs-meta">@Test(testEnum = TestEnum.A, testAnnotation = @TestAnno(testStr = &quot;Test&quot;, testClass = Test.class))</span></code></pre>
+<p>我们需要写下面这些代码：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 已省略 Test 的 AnnotationVisitor 的创建，名称为av</span>
+av.visitEnum(<span class="hljs-string">&quot;testEnum&quot;</span>, <span class="hljs-string">&quot;LTestEnum;&quot;</span>, <span class="hljs-string">&quot;A&quot;</span>); <span class="hljs-comment">// 写入 testEnum</span>
+AnnotationVisitor av1 = av.visitAnnotation(<span class="hljs-string">&quot;testAnnotation&quot;</span>, <span class="hljs-string">&quot;LTestAnno;&quot;</span>); <span class="hljs-comment">// 写入 testAnnotation</span>
+av1.visit(<span class="hljs-string">&quot;testStr&quot;</span>, <span class="hljs-string">&quot;Test&quot;</span>); <span class="hljs-comment">// 写入 testStr</span>
+av1.visit(<span class="hljs-string">&quot;testClass&quot;</span>, Type.of(<span class="hljs-string">&quot;LTest;&quot;</span>)); <span class="hljs-comment">// 写入 testClass</span>
+av1.visitEnd();</code></pre>
+<h3 id="写入数组"><a href="#写入数组" class="headerlink" title="写入数组"></a>写入数组</h3><p>除了上述类型之外，注解类型还允许在注解中定义一维数组。写入数组需要用到<code>visitArray</code>方法，参数为注解属性名称，返回一个新的<code>AnnotationVisitor</code>用于填充这个数组。写入数组信息时，所有的注解属性名称都要写为<code>null</code>，并且不允许再调用<code>visitArray</code>，因为注解类型不允许二维及多维数组的存在。</p>
+<p>下面是一个例子：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 省略 Target 等描述注释</span>
+<span class="hljs-meta">@interface</span> Test &#123;
+    String[] value();
+&#125;
+
+<span class="hljs-meta">@Test(&#123;&quot;test1&quot;, &quot;test2&quot;&#125;)</span></code></pre>
+<p>写入需要下面的代码：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 已省略 Test 的 AnnotationVisitor 的创建，名称为av</span>
+AnnotationVisitor av1 = av.visitArray(<span class="hljs-string">&quot;value&quot;</span>);
+av1.visit(<span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;test1&quot;</span>);
+av1.visit(<span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;test2&quot;</span>);
+av1.visitEnd();</code></pre>
+<h3 id="写入带有-Repeatable注解的注解类型"><a href="#写入带有-Repeatable注解的注解类型" class="headerlink" title="写入带有@Repeatable注解的注解类型"></a>写入带有@Repeatable注解的注解类型</h3><p>通常情况下，一个注解位置每个注解类型只能声明一次，但是带有<code>@Repeatable</code>的注解类型可以多次声明。假设有下面的注解类型：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 省略 Target 等描述注释</span>
+<span class="hljs-meta">@Repeatable(TestContainer.class)</span>
+<span class="hljs-meta">@interface</span> Test &#123;
+    <span class="hljs-function">String <span class="hljs-title">value</span><span class="hljs-params">()</span></span>;
+&#125;
+
+<span class="hljs-meta">@interface</span> TestContainer &#123;
+    Test[] value();
+&#125;</code></pre>
+<p>如果在注释位置上只有一个<code>Test</code>注解，那么写入时只需要写<code>Test</code>；但是如果一个位置上有多个<code>Test</code>注解，则应该使用<code>TestContainer</code>进行等效代替并写入，像下面这样：</p>
+<pre><code class="hljs java"><span class="hljs-meta">@Test(&quot;hello&quot;)</span>
+<span class="hljs-meta">@Test(&quot;world&quot;)</span>
+<span class="hljs-comment">// 等价于 ...</span>
+<span class="hljs-meta">@TestContainer(&#123;@Test(&quot;hello&quot;), @Test(&quot;world&quot;)&#125;)</span></code></pre>
+<h2 id="注解类型的可见性"><a href="#注解类型的可见性" class="headerlink" title="注解类型的可见性"></a>注解类型的可见性</h2><p>根据不同注解类型的作用，在定义注解类型时我们通常都会设置它的可见性，也就是使用<code>@Retention</code>进行设置。</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">RetentionPolicy</th>
+<th style="text-align:center">SOURCE</th>
+<th style="text-align:center">CLASS</th>
+<th style="text-align:center">RUNTIME</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">写入类文件</td>
+<td style="text-align:center">false</td>
+<td style="text-align:center">true</td>
+<td style="text-align:center">true</td>
+</tr>
+<tr>
+<td style="text-align:center">可见性</td>
+<td style="text-align:center">-</td>
+<td style="text-align:center">false</td>
+<td style="text-align:center">true</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>可见性影响了反射时我们能不能访问到这个注解，如果不写则默认为<code>false</code>。</p>
+<h2 id="注解的写入位置"><a href="#注解的写入位置" class="headerlink" title="注解的写入位置"></a>注解的写入位置</h2><p>注解不是哪里都能写入的，它有一套非常详细的使用方法，下面我们将分类讲解。</p>
+<h3 id="类和类成员定义时的注解"><a href="#类和类成员定义时的注解" class="headerlink" title="类和类成员定义时的注解"></a>类和类成员定义时的注解</h3><p>当类与类的成员（字段、方法、记录元素）被定义时，它可以附加注解，例如：</p>
+<pre><code class="hljs java"><span class="hljs-meta">@Retention(RetentionPolicy.RUNTIME)</span>
+<span class="hljs-keyword">public</span> <span class="hljs-meta">@interface</span> TestAnnotation &#123;
+    <span class="hljs-meta">@Deprecated</span>
+    <span class="hljs-function">String <span class="hljs-title">value</span><span class="hljs-params">()</span></span>;
+&#125;</code></pre>
+<p>这种注解在写入时需要调用各个 visitor 的<code>visitAnnotation</code>方法。其中第一个参数是注解类型的<strong>类型描述符</strong>，第二个是注解类型的<strong>可见性</strong>。</p>
+<p>对于附加在类<code>TestAnnotation</code>上的注解<code>Retention</code>，我们需要这样写入：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 省略 ClassWriter 的创建，名称为 cw</span>
+AnnotationVisitor av = cw.visitAnnotation(<span class="hljs-string">&quot;Ljava/lang/annotation/Retention;&quot;</span>, <span class="hljs-keyword">true</span>);
+av.visitEnum(<span class="hljs-string">&quot;value&quot;</span>, <span class="hljs-string">&quot;Ljava/lang/annotation/RetentionPolicy;&quot;</span>, <span class="hljs-string">&quot;RUNTIME&quot;</span>);
+av.visitEnd();</code></pre>
+<p>如果一个成员在被定义时被添加上了<code>@Deprecated</code>注解，那么在定义这个成员时也要加上<code>ACC_DEPRECATED</code>访问标志。</p>
+<p>对于<code>value</code>方法，我们需要这样写入：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 省略 ClassWriter 的创建，名称为 cw</span>
+MethodVisitor mv = cw.visitMethod(ACC_PUBLIC + ACC_ABSTRACT + ACC_DEPRECATED, <span class="hljs-string">&quot;value&quot;</span>, <span class="hljs-string">&quot;()Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">null</span>, <span class="hljs-keyword">null</span>);
+AnnotationVisitor av = mv.visitAnnotation(<span class="hljs-string">&quot;Ljava/lang/Deprecated;&quot;</span>, <span class="hljs-keyword">true</span>);
+av.visitEnd();
+mv.visitEnd();</code></pre>
+<h3 id="类型的注解"><a href="#类型的注解" class="headerlink" title="类型的注解"></a>类型的注解</h3><p>在类型上，我们也能加入注解。要知道类型的注解怎么插入，我们需要先了解两个概念：<strong>类型路径</strong>（Type Path）和<strong>类型引用</strong>（Type Reference）。</p>
+<h4 id="类型路径"><a href="#类型路径" class="headerlink" title="类型路径"></a>类型路径</h4><p>为了指定注解在类型中的位置，JVM 引入了类型路径。假设我们有下面一个泛型需要进行注解：</p>
+<pre><code class="hljs java"><span class="hljs-meta">@A</span> Map&lt;<span class="hljs-meta">@B</span> ? extends <span class="hljs-meta">@C</span> String, <span class="hljs-meta">@D</span> List&lt;<span class="hljs-meta">@E</span> Object&gt;&gt;
+<span class="hljs-meta">@A</span> Outer.<span class="hljs-meta">@B</span> Middle.<span class="hljs-meta">@C</span> Inner
+<span class="hljs-meta">@A</span> String <span class="hljs-meta">@B</span>[] <span class="hljs-meta">@C</span>[] <span class="hljs-meta">@D</span>[]</code></pre>
+<p>可以看到，注解 ABCDE 分别注解了一个复杂类型中的不同元素。如果我们从类型的最外层开始对类型的参数进行遍历，我们就能最终指定插入的位置。遍历的每一<strong>步</strong>（step）都含有两个属性：</p>
+<ul>
+<li><strong>类型路径类别</strong>（Type Path Kind），它决定了这一步该走向哪种元素，可以使用的值如下表：</li>
+</ul>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类别</th>
+<th style="text-align:left">对应元素</th>
+<th style="text-align:left">举例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">ARRAY_ELEMENT</td>
+<td style="text-align:left">数组类型</td>
+<td style="text-align:left"><code>@A Test[]</code></td>
+</tr>
+<tr>
+<td style="text-align:center">INNER_TYPE</td>
+<td style="text-align:left">非静态嵌套类</td>
+<td style="text-align:left"><code>Outer.@A Inner</code></td>
+</tr>
+<tr>
+<td style="text-align:center">WILDCARD_BOUND</td>
+<td style="text-align:left">限定通配符的类型</td>
+<td style="text-align:left"><code>Test&lt;? extends @A Type&gt;</code></td>
+</tr>
+<tr>
+<td style="text-align:center">TYPE_ARGUMENT</td>
+<td style="text-align:left">泛型参数</td>
+<td style="text-align:left"><code>Map&lt;@A Test, Object&gt;</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li><strong>类型参数索引</strong>（Type Argument Index），代表在同一级的几个相同类别的元素中要选择哪个。例如在<code>Map&lt;@A Test, Object&gt;</code>中，泛型参数共有两个，要指定其中一个需要用到这个索引。请注意，只有<strong>泛型参数</strong>才需要指定索引，其它的类别不需要。</li>
+</ul>
+<p>假设我们有下面的类型需要注解：</p>
+<pre><code class="hljs java">Map&lt;String, List&lt;<span class="hljs-meta">@A</span> Object&gt;&gt;</code></pre>
+<p>那么我们访问到注解 A 的路径就像这样：</p>
+<pre><code class="hljs java">Map&lt;String, List&lt;<span class="hljs-meta">@A</span> Object&gt;&gt;
+  - List&lt;<span class="hljs-meta">@A</span> Object&gt; <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 1</span>
+    - <span class="hljs-meta">@A</span> Object <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 0</span></code></pre>
+<p>对于数组来说，注解的位置影响了它的路径长度，下面是按照 A 注解类型路径长度逐渐增大排序的注解示例：</p>
+<pre><code class="hljs java">String <span class="hljs-meta">@A</span>[][][] <span class="hljs-comment">// 路径长度0</span>
+String []<span class="hljs-meta">@A</span>[][] <span class="hljs-comment">// 路径长度1</span>
+String [][]<span class="hljs-meta">@A</span>[] <span class="hljs-comment">// 路径长度2</span>
+<span class="hljs-meta">@A</span> String[][][] <span class="hljs-comment">// 路径长度3</span></code></pre>
+<p>下面是一个组合的例子：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 假设 Inner 是 Outer 的非静态内部类</span>
+List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hljs-meta">@A</span> String[][]&gt;&gt;
+  - ? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hljs-meta">@A</span> String[][]&gt; <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 0</span>
+    - Outer.Inner&lt;<span class="hljs-meta">@A</span> String[][]&gt; <span class="hljs-comment">// kind = WILDCARD_BOUND</span>
+      - Inner&lt;<span class="hljs-meta">@A</span> String[][]&gt; <span class="hljs-comment">// kind = INNER_TYPE</span>
+        - <span class="hljs-meta">@A</span> String[][] <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 0</span>
+          - <span class="hljs-meta">@A</span> <span class="hljs-comment">// kind = ARRAY_ELEMENT, path_length = 2</span></code></pre>
+<p>在 ASM 库中，类型路径使用<code>TypePath</code>包装，创建一个 TypePath 对象需要使用<code>fromString</code>方法，它的参数是一个字符串，这个字符串里面存储了可以复原 TypePath 的所有信息。对于每一步，都有一个对应关系，这些步按顺序连接起来就能复原 TypePath。</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类别</th>
+<th style="text-align:left">映射字符串</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">ARRAY_ELEMENT</td>
+<td style="text-align:left"><code>[</code></td>
+</tr>
+<tr>
+<td style="text-align:center">INNER_TYPE</td>
+<td style="text-align:left"><code>.</code></td>
+</tr>
+<tr>
+<td style="text-align:center">WILDCARD_BOUND</td>
+<td style="text-align:left"><code>*</code></td>
+</tr>
+<tr>
+<td style="text-align:center">TYPE_ARGUMENT</td>
+<td style="text-align:left"><code>&lt;index&gt;;</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>上面的例子可以用<code>0;*.0;[[</code>代替。</p>
+<h4 id="类型引用"><a href="#类型引用" class="headerlink" title="类型引用"></a>类型引用</h4><p>类型路径决定了注解在一个类型内的位置，而类型引用指定了这个被注解类型的位置。</p>
+<p>类型引用本质上是一个 int，其中第25~32位是引用的类型，1~24位是引用的参数。ASM 库提供了<code>TypeReference</code>类来简化创建这些数字的代码。</p>
+<p>先来说说无参的类型引用类型，这些类型可以使用<code>newTypeReference</code>创建 TypeReference 对象，之后通过<code>value</code>方法获得 int 形式的类型引用，如下表：</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类型</th>
+<th style="text-align:center">传入方法</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">FIELD</td>
+<td style="text-align:center"><code>FieldVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">使用在字段声明的类型上</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_RETURN</td>
+<td style="text-align:center"><code>MethodVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">使用在方法声明的返回值上</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_RECEIVER</td>
+<td style="text-align:center"><code>MethodVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">使用在方法接收器上[1]</td>
+</tr>
+<tr>
+<td style="text-align:center">LOCAL_VARIABLE</td>
+<td style="text-align:center"><code>MethodVisitor::visitLocalVariableAnnotation</code></td>
+<td style="text-align:left">使用在方法局部变量上</td>
+</tr>
+<tr>
+<td style="text-align:center">RESOURCE_VARIABLE</td>
+<td style="text-align:center"><code>MethodVisitor::visitLocalVariableAnnotation</code></td>
+<td style="text-align:left">使用在方法资源变量上[2]</td>
+</tr>
+<tr>
+<td style="text-align:center">INSTANCEOF</td>
+<td style="text-align:center"><code>MethodVisitor::visitInsnAnnotation</code></td>
+<td style="text-align:left">使用在<code>instanceof</code>后</td>
+</tr>
+<tr>
+<td style="text-align:center">NEW</td>
+<td style="text-align:center"><code>MethodVisitor::visitInsnAnnotation</code></td>
+<td style="text-align:left">使用在<code>new</code>后</td>
+</tr>
+<tr>
+<td style="text-align:center">CONSTRUCTOR_REFERENCE</td>
+<td style="text-align:center"><code>MethodVisitor::visitInsnAnnotation</code></td>
+<td style="text-align:left">使用在构造函数引用后[3]</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_REFERENCE</td>
+<td style="text-align:center"><code>MethodVisitor::visitInsnAnnotation</code></td>
+<td style="text-align:left">使用在方法引用后[3]</td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p>[1]：方法接收器（<code>this</code>）可以被<strong>显式定义</strong>，比如非静态方法<code>Test::test()</code>在定义时可以写为<code>test(Test this)</code>，这时可以在 this 上附加注解。<br>[2]：资源局部变量是使用<code>try-with-resource</code>语法产生的局部变量。<br>[3]：构造函数引用属于方法引用，语法为<code>&lt;ClassName&gt;::new</code>。这两个注解必须在<code>invokedynamic</code>字节码后。</p>
+</blockquote>
+<p>接下来说一下有参的类型引用类型。</p>
+<ul>
+<li>需要<strong>类型参数</strong>的类型引用。它们需要使用<code>newTypeParameterReference</code>获得 TypeReference 对象，第二个参数是类型参数的序号。</li>
+</ul>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类型</th>
+<th style="text-align:center">传入方法</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">CLASS_TYPE_PARAMETER</td>
+<td style="text-align:center"><code>ClassVisitor::visitTypeAnnotation</code> <br> <code>RecordComponentVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">使用在类类型参数上</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_TYPE_PARAMETER</td>
+<td style="text-align:center"><code>MethodVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">使用在方法类型参数上</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>需要<strong>类型参数边界</strong>的类型引用。类型参数边界即<code>&lt;T extends ...&gt;</code>这种类型参数后面的限定，可以不止一个。它们需要使用<code>newTypeParameterBoundReference</code>获得 TypeReference 对象，第二个参数是类型参数的序号，第三个参数是规定边界限定的序号。</li>
+</ul>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类型</th>
+<th style="text-align:center">传入方法</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">CLASS_TYPE_PARAMETER_BOUND</td>
+<td style="text-align:center"><code>ClassVisitor::visitTypeAnnotation</code> <br> <code>RecordComponentVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">类类型参数边界</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_TYPE_PARAMETER_BOUND</td>
+<td style="text-align:center"><code>MethodVisitor::visitTypeAnnotation</code></td>
+<td style="text-align:left">方法类型参数边界</td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>需要<strong>超类序号</strong>的类型引用。超类序号是定义类时指定的继承类和实现类的序号，继承类的序号是-1，实现类的序号按照定义顺序从0计数。使用<code>newSuperTypeReference</code>创建 TypeReference 对象，第二个参数就是超类序号。类型固定为<code>CLASS_EXTENDS</code>，可用在<code>ClassVisitor::visitTypeAnnotation</code>和<code>RecordComponentVisitor::visitTypeAnnotation</code>方法中。</li>
+<li>需要<strong>方法形式参数序号</strong>的类型引用。使用<code>newFormalParameterReference</code> 创建对象，类型固定为<code>METHOD_FORMAL_PARAMETER</code>，可用在<code>MethodVisitor::visitTypeAnnotation</code>中。</li>
+<li>需要<strong>方法异常列表序号</strong>的类型引用。使用<code>newExceptionReference</code>创建 TypeReference，类型固定为<code>THROWS</code>，可用在<code>MethodVisitor::visitTypeAnnotation</code>中。</li>
+<li>需要 <strong>try-catch 块序号</strong>的类型引用。用<code>newTryCatchReference</code>创建，类型是<code>EXCEPTION_PARAMETER</code>，使用<code>MethodVisitor::visitTryCatchAnnotation</code>写入字节码。</li>
+<li>需要<strong>实际参数序号</strong>的类型引用。它们需要使用<code>newTypeArgumentReference</code>创建，都需要使用<code>MethodVisitor::visitInsnAnnotation</code>写入。</li>
+</ul>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类型</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">CAST</td>
+<td style="text-align:left">使用在<code>checkcast</code>后</td>
+</tr>
+<tr>
+<td style="text-align:center">CONSTRUCTOR_INVOCATION_TYPE_ARGUMENT</td>
+<td style="text-align:left">使用在调用构造函数时指定的类型参数中[1]</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_INVOCATION_TYPE_ARGUMENT</td>
+<td style="text-align:left">使用在调用方法时指定的类型参数中[1]</td>
+</tr>
+<tr>
+<td style="text-align:center">CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT</td>
+<td style="text-align:left">使用在使用构造函数引用时指定的类型参数中[2]</td>
+</tr>
+<tr>
+<td style="text-align:center">METHOD_REFERENCE_TYPE_ARGUMENT</td>
+<td style="text-align:left">使用在使用方法引用时指定的类型参数中[2]</td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p>[1]：在方法或者构造函数调用时，可以手动指定类型参数，如<code>Lists.&lt;String&gt;newArrayList()</code>。注解可以附加到类型参数的列表之中。<br>[2]：方法引用也可以指定类型参数，如<code>Lists::&lt;String&gt;newArrayList</code>。注解可以附加到这个类型参数列表中。这两个注解必须在<code>invokedynamic</code>字节码后。</p>
+</blockquote>
+<p><strong>WIP</strong></p>
+
+      </section>
+
+      
+      
+        <nav class="article-nav">
+          
+          
+            <div class="article-nav-item layout-padding">
+  <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
+    
+    <div class="card-text">
+      
+        <a href="/2022/10/17/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E6%A8%A1%E5%9D%97/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：模块</h2>
+        </a>
+      
+      <div class="card-text--row">Older</div>
+    </div>
+  </article>
+</div>
+          
+        </nav>
+      
+
+      <section class="page-message-container layout-padding">
+        
+
+
+  
+  
+    <div class="valine-container comments-container content-padding--primary soft-size--large soft-style--box">
+      <div id="valine_thread" class="valine-thread"></div>
+    </div>
+    <script type="text/javascript" src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+    <script type="text/javascript" src='//unpkg.com/valine/dist/Valine.min.js'></script>
+    <script type="text/javascript">
+      new Valine({
+        el: "#valine_thread",
+        appId: "mW2DHhwzDNYk9Gk1hsi4XJV7-gzGzoHsz",
+        appKey: "reCUh7XTXRmlDsR3YfbjreRb",
+        avatar: "mp",
+        placeholder: "发一条友善的评论吧~~",
+        notify: true,
+        visitor: true,
+        pageSize: 10,
+      });
+    </script>
+  
+
+  
+  
+
+
+      </section>
+    </div>
+    <div class="widget-info">
+      <section class="widget-author widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-body">
+    
+      <img src="/avatar.jpg" class="soft-size--round soft-style--box" alt="Nickid2018">
+    
+    
+      <h2>Nickid2018</h2>
+    
+    
+
+    <div class="count-box">
+      <div class="count-box--item">
+        <svg class="icon icon-article" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M240.51564747 647.74217627h196.07203239c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806V165.10332731c0-33.18142087-30.16492806-60.32985613-60.32985612-60.32985611H245.04038668C225.43318342 104.7734712 210.35071939 119.85593522 210.35071939 139.46313845V617.57724821c0 16.59071043 13.57421762 30.16492806 30.16492808 30.16492806z m663.62841731-452.47392089v482.63884894c0 33.18142087-27.14843525 60.32985613-60.32985612 60.32985613H180.18579134c-33.18142087 0-60.32985613-27.14843525-60.32985612-60.32985613V195.26825538c-49.77213131 0-90.49478418 40.72265287-90.49478417 90.49478417v452.4739209c0 49.77213131 40.72265287 90.49478418 90.49478417 90.49478417h286.56681657c16.59071043 0 30.16492806 13.57421762 30.16492807 30.16492807s13.57421762 30.16492806 30.16492805 30.16492806h90.49478418c16.59071043 0 30.16492806-13.57421762 30.16492805-30.16492806s13.57421762-30.16492806 30.16492807-30.16492807h286.56681657c49.77213131 0 90.49478418-40.72265287 90.49478417-90.49478417V285.76303955c0-49.77213131-40.72265287-90.49478418-90.49478417-90.49478417zM587.41232014 647.74217627h191.54729318c19.60720323 0 34.68966726-15.08246403 34.68966729-34.68966727V134.93839925c0-16.59071043-13.57421762-30.16492806-30.16492808-30.16492805H617.57724821c-30.16492806 0-60.32985613 27.14843525-60.32985612 60.32985611v452.4739209c0 16.59071043 13.57421762 30.16492806 30.16492805 30.16492806z" fill="currentColor"></path>
+</svg>
+        <span>13</span>
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+        1
+      </div>
+      <div class="count-box--item">
+        <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+        3
+      </div>
+    </div>
+  </div>
+</section>
+
+      
+<section class="widget-toc widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-toc" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M134.50666666 767.46666668H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.23999999v50.13333333c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H134.50666666c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.13333333c0.10666668-27.73333333 22.50666668-50.24000001 50.24000001-50.24000001zM84.37333332 541.65333333h326.18666669c27.73333333 0 50.24000001 22.39999999 50.23999999 50.13333334v50.24000001c0 27.73333333-22.50666668 50.24000001-50.24000002 50.23999999H84.37333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.23999999v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333334zM134.50666666 315.83999999H460.8c27.73333333 0 50.24000001 22.50666668 50.24000001 50.24000001v50.24000001c0 27.73333333-22.50666668 50.13333334-50.24000001 50.13333333H134.50666666c-27.73333333 0-50.24000001-22.39999999-50.23999999-50.13333333v-50.24000001c0.10666668-27.84000001 22.50666668-50.24000001 50.24000001-50.23999999zM209.81333332 89.91999999h326.18666671c27.73333333 0 50.24000001 22.39999999 50.23999997 50.13333335v50.23999999c0 27.73333333-22.50666668 50.24000001-50.24000001 50.24000001H209.81333332c-27.73333333 0-50.24000001-22.50666668-50.23999999-50.24000001v-50.24000001c0-27.73333333 22.50666668-50.13333334 50.24000001-50.13333333zM692.05333333 623.36l274.66666669 176.00000002c23.36000001 14.93333333 30.08 45.97333334 15.14666666 69.33333332L954.77333334 910.93333333c-14.93333333 23.25333334-45.97333334 30.08-69.33333335 15.14666667l-274.66666666-176c-23.36000001-14.93333333-30.08-45.97333334-15.14666667-69.33333333l27.09333334-42.24000001c14.93333333-23.36000001 46.08000001-30.08 69.33333333-15.14666666z" fill="currentColor"></path>
+</svg>
+    <span>TOC</span>
+  </div>
+  <div class="widget-body">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%B3%A8%E8%A7%A3%E4%BF%A1%E6%81%AF"><span class="toc-number">1.</span> <span class="toc-text">写入注解信息</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%B8%B8%E9%87%8F"><span class="toc-number">1.1.</span> <span class="toc-text">写入常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%9E%9A%E4%B8%BE%E5%B8%B8%E9%87%8F"><span class="toc-number">1.2.</span> <span class="toc-text">写入枚举常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%85%B6%E4%BB%96%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.3.</span> <span class="toc-text">写入其他注解类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%95%B0%E7%BB%84"><span class="toc-number">1.4.</span> <span class="toc-text">写入数组</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%B8%A6%E6%9C%89-Repeatable%E6%B3%A8%E8%A7%A3%E7%9A%84%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.5.</span> <span class="toc-text">写入带有@Repeatable注解的注解类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%8F%AF%E8%A7%81%E6%80%A7"><span class="toc-number">2.</span> <span class="toc-text">注解类型的可见性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%9A%84%E5%86%99%E5%85%A5%E4%BD%8D%E7%BD%AE"><span class="toc-number">3.</span> <span class="toc-text">注解的写入位置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%92%8C%E7%B1%BB%E6%88%90%E5%91%98%E5%AE%9A%E4%B9%89%E6%97%B6%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.1.</span> <span class="toc-text">类和类成员定义时的注解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.2.</span> <span class="toc-text">类型的注解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E8%B7%AF%E5%BE%84"><span class="toc-number">3.2.1.</span> <span class="toc-text">类型路径</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E5%BC%95%E7%94%A8"><span class="toc-number">3.2.2.</span> <span class="toc-text">类型引用</span></a></li></ol></li></ol></li></ol>
+  </div>
+</section>
+
+
+      
+<section class="widet-notice widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-notice" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M512 945.02305225v28.15620663a24.27259221 24.27259221 0 0 1-24.27259221 24.27259335H394.0352a48.54518557 48.54518557 0 0 1-41.74885888-23.78714112l-110.68302222-184.47170332a132.04290333 132.04290333 0 0 1-17.47626667-48.54518557h118.4502511a200.97706667 200.97706667 0 0 1 76.21594113 14.56355556l20.38897777 133.49925888a48.54518557 48.54518557 0 0 0 36.40888888 27.67075555l16.01991111 2.91271112a24.27259221 24.27259221 0 0 1 20.38897778 25.72894889zM997.45185223 463.45481443a194.18074112 194.18074112 0 0 1-38.8361489 116.50844445 24.75804445 24.75804445 0 0 1-36.4088889 0l-34.95253333-34.95253333a24.27259221 24.27259221 0 0 1-2.91271111-30.58346667 97.09036999 97.09036999 0 0 0 0-106.79940665 24.27259221 24.27259221 0 0 1 2.91271111-30.58346666l34.95253333-34.95253334a24.75804445 24.75804445 0 0 1 18.93262223-7.28177777 26.2144 26.2144 0 0 1 17.47626667 9.70903665A194.18074112 194.18074112 0 0 1 997.45185223 463.45481443z m-194.18074112-388.36148111v776.72296335a48.54518557 48.54518557 0 0 1-48.54518556 48.54518443h-28.64165888a48.54518557 48.54518557 0 0 1-33.98163001-14.07810332l-145.63555556-143.20829668A291.27111111 291.27111111 0 0 0 342.57730333 657.63555556H172.18370333a145.63555556 145.63555556 0 0 1-145.63555556-145.63555556v-97.09036999a145.63555556 145.63555556 0 0 1 145.63555556-145.63555556h170.3936a291.27111111 291.27111111 0 0 0 206.31703779-85.43952668l145.63555555-143.20829554a48.54518557 48.54518557 0 0 1 33.98162888-14.07810446H754.72592555a48.54518557 48.54518557 0 0 1 48.54518556 48.54518555z" fill="currentColor"></path>
+</svg>
+    <span>NOTICE</span>
+  </div>
+  <div class="widget-body">
+    <p>本站所有文章都禁止以任何形式的抄袭或转载哦~</p>
+  </div>
+</section>
+
+
+      <section class="widget-categorys widget-item layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-categories" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M900.3614811 257.09082106h-339.81629553l-67.96326003-101.9448889c-19.41807444-29.12711113-48.54518557-43.69066667-82.52681443-43.69066667H123.6385189c-53.39970333 0-97.09036999 43.69066667-97.09037113 97.09036999v582.54222222c0 53.39970333 43.69066667 97.09036999 97.09037113 97.09037002h776.7229622c53.39970333 0 97.09036999-43.69066667 97.09037113-97.09037002V354.18119104c0-53.39970333-43.69066667-97.09036999-97.09037113-97.09036998z m-97.09036999 242.72592554H220.72888889c-24.27259221 0-48.54518557-24.27259221-48.54518556-48.54518556s24.27259221-48.54518557 48.54518556-48.54518444h582.54222222c24.27259221 0 48.54518557 24.27259221 48.54518556 48.54518444s-24.27259221 48.54518557-48.54518556 48.54518556z" fill="currentColor"></path>
+</svg>
+    <span>CATEGORYS</span>
+  </div>
+  <div class="widget-body">
+    <ul class="categorys-list">
+      
+        <li class="categorys-list-item">
+          <a href="/categories/Java/">
+            Java (13)
+          </a>
+        </li>
+      
+    </ul>
+  </div>
+</section>
+
+      <section class="widget-tags widget-item  layout-margin content-padding--primary soft-size--large soft-style--box">
+  <div class="widget-title">
+    <svg class="icon icon-tags" viewBox="0 0 1098 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M283.42180005 272q0-28.38857157-20.09142843-48.48000001t-48.47999998-20.09142842-48.48000002 20.09142842-20.09142846 48.48000001 20.09142846 48.48 48.48000002 20.09142843 48.47999998-20.09142843 20.09142843-48.48zM855.0332285 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.03999997 263.58857157q-20.9142853 19.81714313-48.75428534 19.81714312-28.38857157 0-48.20571468-19.81714312l-383.04-383.58857157q-20.36571468-19.81714313-34.55999999-54.10285688t-14.19428534-62.6742853l0-222.85714313q0-27.84000002 20.36571469-48.20571469t48.2057147-20.36571466l222.85714313 0q28.38857157 0 62.6742853 14.19428529t54.65142842 34.55999999l383.04000001 382.49142843q19.81714313 20.9142853 19.81714314 48.75428532zM1060.74751475 580.57142843q0 28.38857157-19.81714313 48.2057147l-263.04 263.58857157q-20.9142853 19.81714313-48.75428531 19.81714312-19.26857155 0-31.61142843-7.47428531t-28.38857159-24.13714314l251.79428534-251.7942853q19.81714313-19.81714313 19.81714308-48.20571469 0-27.84000002-19.81714308-48.75428531l-383.04000001-382.49142845q-20.36571468-20.36571468-54.65142842-34.55999999t-62.67428532-14.19428534l120 0q28.38857157 0 62.67428532 14.19428534t54.65142842 34.55999999l383.03999998 382.49142845q19.81714313 20.9142853 19.81714314 48.75428531z" fill="currentColor"></path>
+</svg>
+    <span>TAGS</span>
+  </div>
+  <div class="widget-body">
+    <div class="tags-cloud">
+      <a href="/tags/ASM/" style="font-size: 15px;" class="tags-cloud-5">ASM</a> <a href="/tags/JEP/" style="font-size: 10px;" class="tags-cloud-0">JEP</a> <a href="/tags/Java/" style="font-size: 20px;" class="tags-cloud-10">Java</a>
+    </div>
+  </div>
+</section>
+    </div>
+  </article>
+</div>
+
+    <!-- footer container -->
+<footer id="footer" class="footer">
+  <div class="footer-container">
+    
+    <div class="social-icons">
+      
+        
+      
+        
+      
+        
+      
+        
+          <a href="https://github.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-github" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M64.6 512c0 195.6 125.4 361.9 300.1 422.9 23.5 5.9 19.9-10.8 19.9-22.2v-77.6c-135.8 15.9-141.3-74-150.5-89-18.5-31.5-61.9-39.5-49-54.5 31-15.9 62.5 4 98.9 58 26.4 39.1 77.9 32.5 104.1 26 5.7-23.5 17.9-44.5 34.7-60.9-140.7-25.2-199.4-111.1-199.4-213.3 0-49.5 16.4-95.1 48.4-131.8-20.4-60.6 1.9-112.4 4.9-120.1 58.2-5.2 118.5 41.6 123.3 45.3 33.1-8.9 70.8-13.7 112.9-13.7 42.4 0 80.3 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.4-43.9 2.9 7.7 24.7 58.3 5.5 118.1 32.5 36.8 49 82.8 49 132.4 0 102.3-59 188.3-200.2 213.2 23.5 23.3 38.1 55.5 38.1 91.1v112.7c0.8 9 0 17.9 15.1 17.9C832.7 877 960.4 709.4 960.4 512.1c0-247.5-200.6-447.9-447.9-447.9C265 64.1 64.6 264.5 64.6 512z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://twitter.com/Nickid2018/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg class="icon icon-twitter" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <path d="M962.285714 233.142857q-38.285714 56-92.571429 95.428571 0.571429 8 0.571429 24 0 74.285714-21.714286 148.285714t-66 142-105.428571 120.285714-147.428571 83.428571-184.571429 31.142857q-154.857143 0-283.428571-82.857143 20 2.285714 44.571429 2.285714 128.571429 0 229.142857-78.857143-60-1.142857-107.428571-36.857143t-65.142857-91.142857q18.857143 2.857143 34.857143 2.857143 24.571429 0 48.571429-6.285714-64-13.142857-106-63.714286t-42-117.428571l0-2.285714q38.857143 21.714286 83.428571 23.428571-37.714286-25.142857-60-65.714286t-22.285714-88q0-50.285714 25.142857-93.142857 69.142857 85.142857 168.285714 136.285714t212.285714 56.857143q-4.571429-21.714286-4.571429-42.285714 0-76.571429 54-130.571429t130.571429-54q80 0 134.857143 58.285714 62.285714-12 117.142857-44.571429-21.142857 65.714286-81.142857 101.714286 53.142857-5.714286 106.285714-28.571429z"></path>
+</svg>
+          </a>
+        
+      
+        
+          <a href="https://space.bilibili.com/443879411/" class="soft-size--primary soft-style--box" target="_blank" rel="noopener noreferrer">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024" class="icon icon-github"><path d="M800.768 237.216h-51.264l44.832-44.832c19.232-19.232 19.232-57.664 0-76.864s-57.664-19.232-76.864 0l-128.128 121.728h-153.76L307.456 115.52c-19.232-19.232-57.664-19.232-76.864 0s-19.232 57.664 0 76.864l44.832 44.832H224.16C134.464 237.216 64 307.68 64 397.376v345.952c0 96.096 70.464 166.56 160.16 166.56h570.144c89.696 0 160.16-70.464 160.16-160.16V397.376c6.4-89.696-64.064-160.16-153.76-160.16z m44.864 506.112a57.44 57.44 0 0 1-57.664 57.664H230.624a57.44 57.44 0 0 1-57.664-57.664v-339.52c0-32.032 25.632-57.664 57.664-57.664h557.344c32.032 0 57.664 25.632 57.664 57.664v339.52zM345.952 461.44a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z m333.12 0a57.44 57.44 0 0 0-57.664 57.664v57.664c0 32.032 25.632 57.664 57.664 57.664s57.664-25.632 57.664-57.664v-57.664a57.44 57.44 0 0 0-57.664-57.664z"></path></svg>
+          </a>
+        
+      
+    </div>
+     
+    <p>&copy; 2022 <a href="/" target="_blank">Nickid2018</a></p>
+
+    
+
+    <p>Powered by <a href="https://hexo.io" target="_blank" rel="noopener noreferrer">Hexo</a> Theme - <a href="https://github.com/miiiku/flex-block" target="_blank" rel="noopener noreferrer author">flex-block</a></p>
+
+    <p>
+      <a href="javascript:;" id="theme-light">🌞 浅色</a>
+      <a href="javascript:;" id="theme-dark">🌛 深色</a>
+      <a href="javascript:;" id="theme-auto">🤖️ 自动</a>
+    </p>
+  </div>
+</footer>
+  </div>
+
+  <div class="back-to-top-fixed soft-size--round soft-style--box">
+    <svg class="icon icon-back-to-top" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <path d="M725.333333 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8l-213.333333-213.333333c-17.066667-17.066667-17.066667-42.666667 0-59.733333s42.666667-17.066667 59.733333 0l213.333333 213.333333c17.066667 17.066667 17.066667 42.666667 0 59.733333C746.666667 422.4 738.133333 426.666667 725.333333 426.666667z"></path>
+      <path d="M298.666667 426.666667c-12.8 0-21.333333-4.266667-29.866667-12.8-17.066667-17.066667-17.066667-42.666667 0-59.733333l213.333333-213.333333c17.066667-17.066667 42.666667-17.066667 59.733333 0s17.066667 42.666667 0 59.733333l-213.333333 213.333333C320 422.4 311.466667 426.666667 298.666667 426.666667z"></path>
+      <path d="M512 896c-25.6 0-42.666667-17.066667-42.666667-42.666667L469.333333 170.666667c0-25.6 17.066667-42.666667 42.666667-42.666667s42.666667 17.066667 42.666667 42.666667l0 682.666667C554.666667 878.933333 537.6 896 512 896z"></path>
+    </svg>
+  </div>
+
+  
+  <!-- aplayer -->
+
+
+<!-- dplayer -->
+
+
+
+
+  
+
+
+  
+
+
+  <!-- Baidu Analytics START -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      if (window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168")) {
+        return console.log("本地调试");
+      }
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f32d0139ad5f3b55317728550c14d428";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  <!-- Baidu Analytics End -->
+
+  
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+  
+  <!-- 尾部用户自定义相关内容 -->
+</body>
+</html>
