@@ -160,14 +160,14 @@
       
       
       <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
-        <p>在 Java 语言中，<strong>注解</strong>（Annotation）是很重要的一部分。它的存在让许多代码变得简洁。与<strong>注解执行器</strong>（Annotation Processor）结合之后，它能发挥出意想不到的功能。这篇文章就将讲述注解是什么写入在字节码中的。</p>
+        <p>在 Java 语言中，<strong>注解</strong>（Annotation）是很重要的一部分。它的存在让许多代码变得简洁。与<strong>注解执行器</strong>（Annotation<br>Processor）结合之后，它能发挥出意想不到的功能。这篇文章就将讲述注解是什么写入在字节码中的。</p>
 <blockquote>
 <p>注解类型的定义在前文（类的结构二）中已经写过了，如果不了解注解类型的写入可以先查看那一篇文章。</p>
 </blockquote>
 <h2 id="写入注解信息"><a href="#写入注解信息" class="headerlink" title="写入注解信息"></a>写入注解信息</h2><p>写入注解信息需要用到<code>AnnotationVisitor</code>这个类，它含有的方法支持我们对注解添加信息。</p>
-<h3 id="写入常量"><a href="#写入常量" class="headerlink" title="写入常量"></a>写入常量</h3><p>写入常量需要使用<code>visit</code>方法，它的第一个参数代表注解属性的名称，第二个参数代表值。可以写入的常量类型有：8种基本类型、字符串和 Type 对象（不包括方法描述符）。</p>
+<h3 id="写入常量"><a href="#写入常量" class="headerlink" title="写入常量"></a>写入常量</h3><p>写入常量需要使用<code>visit</code>方法，它的第一个参数代表注解属性的名称，第二个参数代表值。可以写入的常量类型有：8种基本类型、字符串和<br>Type 对象（不包括方法描述符）。</p>
 <h3 id="写入枚举常量"><a href="#写入枚举常量" class="headerlink" title="写入枚举常量"></a>写入枚举常量</h3><p>写入枚举常量需要使用<code>visitEnum</code>方法，第一个参数仍然是注解属性的名称，第二个是枚举对象的<strong>类型描述符</strong>，第三个是枚举对象的名称。</p>
-<h3 id="写入其他注解类型"><a href="#写入其他注解类型" class="headerlink" title="写入其他注解类型"></a>写入其他注解类型</h3><p>写入其他注解类型对象需要使用<code>visitAnnotation</code>方法，第一个参数是注解属性名称，第二个是要写入的注解类型的<strong>类型描述符</strong>。这个方法返回一个新的<code>AnnotationVisitor</code>，使用这个新的 visitor 可以填充要写入的注解类型对象的信息。</p>
+<h3 id="写入其他注解类型"><a href="#写入其他注解类型" class="headerlink" title="写入其他注解类型"></a>写入其他注解类型</h3><p>写入其他注解类型对象需要使用<code>visitAnnotation</code>方法，第一个参数是注解属性名称，第二个是要写入的注解类型的<strong>类型描述符</strong><br>。这个方法返回一个新的<code>AnnotationVisitor</code>，使用这个新的 visitor 可以填充要写入的注解类型对象的信息。</p>
 <p>假如说我们要写入下面的注解：</p>
 <pre><code class="hljs java"><span class="hljs-comment">// 省略 Target 等描述注释</span>
 <span class="hljs-meta">@interface</span> TestAnno &#123;
@@ -188,7 +188,7 @@ AnnotationVisitor av1 = av.visitAnnotation(<span class="hljs-string">&quot;testA
 av1.visit(<span class="hljs-string">&quot;testStr&quot;</span>, <span class="hljs-string">&quot;Test&quot;</span>); <span class="hljs-comment">// 写入 testStr</span>
 av1.visit(<span class="hljs-string">&quot;testClass&quot;</span>, Type.of(<span class="hljs-string">&quot;LTest;&quot;</span>)); <span class="hljs-comment">// 写入 testClass</span>
 av1.visitEnd();</code></pre>
-<h3 id="写入数组"><a href="#写入数组" class="headerlink" title="写入数组"></a>写入数组</h3><p>除了上述类型之外，注解类型还允许在注解中定义一维数组。写入数组需要用到<code>visitArray</code>方法，参数为注解属性名称，返回一个新的<code>AnnotationVisitor</code>用于填充这个数组。写入数组信息时，所有的注解属性名称都要写为<code>null</code>，并且不允许再调用<code>visitArray</code>，因为注解类型不允许二维及多维数组的存在。</p>
+<h3 id="写入数组"><a href="#写入数组" class="headerlink" title="写入数组"></a>写入数组</h3><p>除了上述类型之外，注解类型还允许在注解中定义一维数组。写入数组需要用到<code>visitArray</code><br>方法，参数为注解属性名称，返回一个新的<code>AnnotationVisitor</code>用于填充这个数组。写入数组信息时，所有的注解属性名称都要写为<code>null</code><br>，并且不允许再调用<code>visitArray</code>，因为注解类型不允许二维及多维数组的存在。</p>
 <p>下面是一个例子：</p>
 <pre><code class="hljs java"><span class="hljs-comment">// 省略 Target 等描述注释</span>
 <span class="hljs-meta">@interface</span> Test &#123;
@@ -212,7 +212,7 @@ av1.visitEnd();</code></pre>
 <span class="hljs-meta">@interface</span> TestContainer &#123;
     Test[] value();
 &#125;</code></pre>
-<p>如果在注释位置上只有一个<code>Test</code>注解，那么写入时只需要写<code>Test</code>；但是如果一个位置上有多个<code>Test</code>注解，则应该使用<code>TestContainer</code>进行等效代替并写入，像下面这样：</p>
+<p>如果在注释位置上只有一个<code>Test</code>注解，那么写入时只需要写<code>Test</code>；但是如果一个位置上有多个<code>Test</code>注解，则应该使用<code>TestContainer</code><br>进行等效代替并写入，像下面这样：</p>
 <pre><code class="hljs java"><span class="hljs-meta">@Test(&quot;hello&quot;)</span>
 <span class="hljs-meta">@Test(&quot;world&quot;)</span>
 <span class="hljs-comment">// 等价于 ...</span>
@@ -252,7 +252,7 @@ av1.visitEnd();</code></pre>
     <span class="hljs-meta">@Deprecated</span>
     <span class="hljs-function">String <span class="hljs-title">value</span><span class="hljs-params">()</span></span>;
 &#125;</code></pre>
-<p>这种注解在写入时需要调用各个 visitor 的<code>visitAnnotation</code>方法。其中第一个参数是注解类型的<strong>类型描述符</strong>，第二个是注解类型的<strong>可见性</strong>。</p>
+<p>这种注解在写入时需要调用各个 visitor 的<code>visitAnnotation</code>方法。其中第一个参数是注解类型的<strong>类型描述符</strong><br>，第二个是注解类型的<strong>可见性</strong>。</p>
 <p>对于附加在类<code>TestAnnotation</code>上的注解<code>Retention</code>，我们需要这样写入：</p>
 <pre><code class="hljs java"><span class="hljs-comment">// 省略 ClassWriter 的创建，名称为 cw</span>
 AnnotationVisitor av = cw.visitAnnotation(<span class="hljs-string">&quot;Ljava/lang/annotation/Retention;&quot;</span>, <span class="hljs-keyword">true</span>);
@@ -265,12 +265,12 @@ MethodVisitor mv = cw.visitMethod(ACC_PUBLIC + ACC_ABSTRACT + ACC_DEPRECATED, <s
 AnnotationVisitor av = mv.visitAnnotation(<span class="hljs-string">&quot;Ljava/lang/Deprecated;&quot;</span>, <span class="hljs-keyword">true</span>);
 av.visitEnd();
 mv.visitEnd();</code></pre>
-<h3 id="类型的注解"><a href="#类型的注解" class="headerlink" title="类型的注解"></a>类型的注解</h3><p>在类型上，我们也能加入注解。要知道类型的注解怎么插入，我们需要先了解两个概念：<strong>类型路径</strong>（Type Path）和<strong>类型引用</strong>（Type Reference）。</p>
+<h3 id="类型的注解"><a href="#类型的注解" class="headerlink" title="类型的注解"></a>类型的注解</h3><p>在类型上，我们也能加入注解，这些注解<code>@Target</code>中必须含有<code>TYPE_USE</code>。要知道类型的注解怎么插入，我们需要先了解两个概念：<strong>类型路径</strong>（Type Path）和<strong>类型引用</strong>（Type<br>Reference）。</p>
 <h4 id="类型路径"><a href="#类型路径" class="headerlink" title="类型路径"></a>类型路径</h4><p>为了指定注解在类型中的位置，JVM 引入了类型路径。假设我们有下面一个泛型需要进行注解：</p>
-<pre><code class="hljs java"><span class="hljs-meta">@A</span> Map&lt;<span class="hljs-meta">@B</span> ? extends <span class="hljs-meta">@C</span> String, <span class="hljs-meta">@D</span> List&lt;<span class="hljs-meta">@E</span> Object&gt;&gt;
+<pre><code class="hljs java"><span class="hljs-meta">@A</span> Map&lt;<span class="hljs-meta">@B</span>?extends <span class="hljs-meta">@C</span> String, <span class="hljs-meta">@D</span> List&lt;<span class="hljs-meta">@E</span> Object&gt;&gt;
 <span class="hljs-meta">@A</span> Outer.<span class="hljs-meta">@B</span> Middle.<span class="hljs-meta">@C</span> Inner
 <span class="hljs-meta">@A</span> String <span class="hljs-meta">@B</span>[] <span class="hljs-meta">@C</span>[] <span class="hljs-meta">@D</span>[]</code></pre>
-<p>可以看到，注解 ABCDE 分别注解了一个复杂类型中的不同元素。如果我们从类型的最外层开始对类型的参数进行遍历，我们就能最终指定插入的位置。遍历的每一<strong>步</strong>（step）都含有两个属性：</p>
+<p>可以看到，注解 ABCDE<br>分别注解了一个复杂类型中的不同元素。如果我们从类型的最外层开始对类型的参数进行遍历，我们就能最终指定插入的位置。遍历的每一<strong><br>步</strong>（step）都含有两个属性：</p>
 <ul>
 <li><strong>类型路径类别</strong>（Type Path Kind），它决定了这一步该走向哪种元素，可以使用的值如下表：</li>
 </ul>
@@ -308,18 +308,18 @@ mv.visitEnd();</code></pre>
 </table>
 </div>
 <ul>
-<li><strong>类型参数索引</strong>（Type Argument Index），代表在同一级的几个相同类别的元素中要选择哪个。例如在<code>Map&lt;@A Test, Object&gt;</code>中，泛型参数共有两个，要指定其中一个需要用到这个索引。请注意，只有<strong>泛型参数</strong>才需要指定索引，其它的类别不需要。</li>
+<li><strong>类型参数索引</strong>（Type Argument Index），代表在同一级的几个相同类别的元素中要选择哪个。例如在<code>Map&lt;@A Test, Object&gt;</code><br>中，泛型参数共有两个，要指定其中一个需要用到这个索引。请注意，只有<strong>泛型参数</strong>才需要指定索引，其它的类别不需要。</li>
 </ul>
 <p>假设我们有下面的类型需要注解：</p>
 <pre><code class="hljs java">Map&lt;String, List&lt;<span class="hljs-meta">@A</span> Object&gt;&gt;</code></pre>
 <p>那么我们访问到注解 A 的路径就像这样：</p>
 <pre><code class="hljs java">Map&lt;String, List&lt;<span class="hljs-meta">@A</span> Object&gt;&gt;
-  - List&lt;<span class="hljs-meta">@A</span> Object&gt; <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 1</span>
-    - <span class="hljs-meta">@A</span> Object <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 0</span></code></pre>
+  -List&lt;<span class="hljs-meta">@A</span> Object&gt; <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 1</span>
+    -<span class="hljs-meta">@A</span> Object <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 0</span></code></pre>
 <p>对于数组来说，注解的位置影响了它的路径长度，下面是按照 A 注解类型路径长度逐渐增大排序的注解示例：</p>
-<pre><code class="hljs java">String <span class="hljs-meta">@A</span>[][][] <span class="hljs-comment">// 路径长度0</span>
-String []<span class="hljs-meta">@A</span>[][] <span class="hljs-comment">// 路径长度1</span>
-String [][]<span class="hljs-meta">@A</span>[] <span class="hljs-comment">// 路径长度2</span>
+<pre><code class="hljs java">String<span class="hljs-meta">@A</span>[][][] <span class="hljs-comment">// 路径长度0</span>
+String[]<span class="hljs-meta">@A</span>[][] <span class="hljs-comment">// 路径长度1</span>
+String[][]<span class="hljs-meta">@A</span>[] <span class="hljs-comment">// 路径长度2</span>
 <span class="hljs-meta">@A</span> String[][][] <span class="hljs-comment">// 路径长度3</span></code></pre>
 <p>下面是一个组合的例子：</p>
 <pre><code class="hljs java"><span class="hljs-comment">// 假设 Inner 是 Outer 的非静态内部类</span>
@@ -329,7 +329,7 @@ List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hl
       - Inner&lt;<span class="hljs-meta">@A</span> String[][]&gt; <span class="hljs-comment">// kind = INNER_TYPE</span>
         - <span class="hljs-meta">@A</span> String[][] <span class="hljs-comment">// kind = TYPE_ARGUMENT, index = 0</span>
           - <span class="hljs-meta">@A</span> <span class="hljs-comment">// kind = ARRAY_ELEMENT, path_length = 2</span></code></pre>
-<p>在 ASM 库中，类型路径使用<code>TypePath</code>包装，创建一个 TypePath 对象需要使用<code>fromString</code>方法，它的参数是一个字符串，这个字符串里面存储了可以复原 TypePath 的所有信息。对于每一步，都有一个对应关系，这些步按顺序连接起来就能复原 TypePath。</p>
+<p>在 ASM 库中，类型路径使用<code>TypePath</code>包装，创建一个 TypePath 对象需要使用<code>fromString</code>方法，它的参数是一个字符串，这个字符串里面存储了可以复原<br>TypePath 的所有信息。对于每一步，都有一个对应关系，这些步按顺序连接起来就能复原 TypePath。</p>
 <div class="table-container">
 <table>
 <thead>
@@ -361,7 +361,7 @@ List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hl
 <p>上面的例子可以用<code>0;*.0;[[</code>代替。</p>
 <h4 id="类型引用"><a href="#类型引用" class="headerlink" title="类型引用"></a>类型引用</h4><p>类型路径决定了注解在一个类型内的位置，而类型引用指定了这个被注解类型的位置。</p>
 <p>类型引用本质上是一个 int，其中第25~32位是引用的类型，1~24位是引用的参数。ASM 库提供了<code>TypeReference</code>类来简化创建这些数字的代码。</p>
-<p>先来说说无参的类型引用类型，这些类型可以使用<code>newTypeReference</code>创建 TypeReference 对象，之后通过<code>value</code>方法获得 int 形式的类型引用，如下表：</p>
+<p>先来说说无参的类型引用类型，这些类型可以使用<code>newTypeReference</code>创建 TypeReference 对象，之后通过<code>value</code>方法获得 int<br>形式的类型引用，如下表：</p>
 <div class="table-container">
 <table>
 <thead>
@@ -451,7 +451,7 @@ List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hl
 </table>
 </div>
 <ul>
-<li>需要<strong>类型参数边界</strong>的类型引用。类型参数边界即<code>&lt;T extends ...&gt;</code>这种类型参数后面的限定，可以不止一个。它们需要使用<code>newTypeParameterBoundReference</code>获得 TypeReference 对象，第二个参数是类型参数的序号，第三个参数是规定边界限定的序号。</li>
+<li>需要<strong>类型参数边界</strong>的类型引用。类型参数边界即<code>&lt;T extends ...&gt;</code><br>这种类型参数后面的限定，可以不止一个。它们需要使用<code>newTypeParameterBoundReference</code>获得 TypeReference<br>对象，第二个参数是类型参数的序号，第三个参数是规定边界限定的序号。</li>
 </ul>
 <div class="table-container">
 <table>
@@ -477,11 +477,11 @@ List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hl
 </table>
 </div>
 <ul>
-<li>需要<strong>超类序号</strong>的类型引用。超类序号是定义类时指定的继承类和实现类的序号，继承类的序号是-1，实现类的序号按照定义顺序从0计数。使用<code>newSuperTypeReference</code>创建 TypeReference 对象，第二个参数就是超类序号。类型固定为<code>CLASS_EXTENDS</code>，可用在<code>ClassVisitor::visitTypeAnnotation</code>和<code>RecordComponentVisitor::visitTypeAnnotation</code>方法中。</li>
-<li>需要<strong>方法形式参数序号</strong>的类型引用。使用<code>newFormalParameterReference</code> 创建对象，类型固定为<code>METHOD_FORMAL_PARAMETER</code>，可用在<code>MethodVisitor::visitTypeAnnotation</code>中。</li>
-<li>需要<strong>方法异常列表序号</strong>的类型引用。使用<code>newExceptionReference</code>创建 TypeReference，类型固定为<code>THROWS</code>，可用在<code>MethodVisitor::visitTypeAnnotation</code>中。</li>
-<li>需要 <strong>try-catch 块序号</strong>的类型引用。用<code>newTryCatchReference</code>创建，类型是<code>EXCEPTION_PARAMETER</code>，使用<code>MethodVisitor::visitTryCatchAnnotation</code>写入字节码。</li>
-<li>需要<strong>实际参数序号</strong>的类型引用。它们需要使用<code>newTypeArgumentReference</code>创建，都需要使用<code>MethodVisitor::visitInsnAnnotation</code>写入。</li>
+<li>需要<strong>超类序号</strong><br>的类型引用。超类序号是定义类时指定的继承类和实现类的序号，继承类的序号是-1，实现类的序号按照定义顺序从0计数。使用<code>newSuperTypeReference</code><br>创建 TypeReference 对象，第二个参数就是超类序号。类型固定为<code>CLASS_EXTENDS</code>，可用在<code>ClassVisitor::visitTypeAnnotation</code><br>和<code>RecordComponentVisitor::visitTypeAnnotation</code>方法中。</li>
+<li>需要<strong>方法形式参数序号</strong>的类型引用。使用<code>newFormalParameterReference</code> 创建对象，类型固定为<code>METHOD_FORMAL_PARAMETER</code><br>，可用在<code>MethodVisitor::visitTypeAnnotation</code>中。</li>
+<li>需要<strong>方法异常列表序号</strong>的类型引用。使用<code>newExceptionReference</code>创建 TypeReference，类型固定为<code>THROWS</code><br>，可用在<code>MethodVisitor::visitTypeAnnotation</code>中。</li>
+<li>需要 <strong>try-catch 块序号</strong>的类型引用。用<code>newTryCatchReference</code>创建，类型是<code>EXCEPTION_PARAMETER</code><br>，使用<code>MethodVisitor::visitTryCatchAnnotation</code>写入字节码。</li>
+<li>需要<strong>实际参数序号</strong>的类型引用。它们需要使用<code>newTypeArgumentReference</code><br>创建，都需要使用<code>MethodVisitor::visitInsnAnnotation</code>写入。</li>
 </ul>
 <div class="table-container">
 <table>
@@ -518,7 +518,143 @@ List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hl
 <blockquote>
 <p>[1]：在方法或者构造函数调用时，可以手动指定类型参数，如<code>Lists.&lt;String&gt;newArrayList()</code>。注解可以附加到类型参数的列表之中。<br>[2]：方法引用也可以指定类型参数，如<code>Lists::&lt;String&gt;newArrayList</code>。注解可以附加到这个类型参数列表中。这两个注解必须在<code>invokedynamic</code>字节码后。</p>
 </blockquote>
-<p><strong>WIP</strong></p>
+<p>下面是一个例子：</p>
+<pre><code class="hljs java"><span class="hljs-meta">@Retention(RetentionPolicy.RUNTIME)</span>
+<span class="hljs-meta">@Target(&#123;ElementType.TYPE, ElementType.TYPE_USE&#125;)</span>
+<span class="hljs-meta">@interface</span> Test &#123;
+    <span class="hljs-function">String <span class="hljs-title">value</span><span class="hljs-params">()</span></span>;
+&#125;
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">TestMain</span> </span>&#123;
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">abstract</span> InputStream <span class="hljs-title">testFile</span><span class="hljs-params">(String test)</span> <span class="hljs-keyword">throws</span> IOException</span>;
+
+    <span class="hljs-meta">@SuppressWarnings(&quot;unchecked&quot;)</span>
+    <span class="hljs-keyword">public</span> &lt;<span class="hljs-meta">@Test(&quot;test&quot;)</span> T extends <span class="hljs-meta">@Test(&quot;testA&quot;)</span> InputStream&gt; <span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(</span></span>
+<span class="hljs-params"><span class="hljs-function">            <span class="hljs-meta">@Test(&quot;testB&quot;)</span> TestMain <span class="hljs-keyword">this</span>,</span></span>
+<span class="hljs-params"><span class="hljs-function">            <span class="hljs-meta">@Test(&quot;testC&quot;)</span> String file,</span></span>
+<span class="hljs-params"><span class="hljs-function">            Consumer&lt;BiConsumer&lt;InputStream, Integer&gt;&gt; consumer)</span></span>
+<span class="hljs-function">            <span class="hljs-keyword">throws</span> @<span class="hljs-title">Test</span><span class="hljs-params">(<span class="hljs-string">&quot;testD&quot;</span>)</span> IOException </span>&#123;
+        <span class="hljs-keyword">try</span> (<span class="hljs-meta">@Test(&quot;testE&quot;)</span> T input = (<span class="hljs-meta">@Test(&quot;testF&quot;)</span> T) testFile(file)) &#123;
+            consumer.accept(<span class="hljs-meta">@TestA(&quot;testG&quot;)</span> InputStream::mark);
+        &#125;
+    &#125;
+&#125;</code></pre>
+<p>下面将写入这个 test 方法：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 省略 ClassWriter 创建，对象为 cw，使用 COMPUTE_FRAMES 标志</span>
+<span class="hljs-comment">// 所有注解具体写入内容省略，仅显示目前写入哪个注解</span>
+<span class="hljs-comment">// 省略 SuppressWarnings 注解</span>
+MethodVisitor mv = classWriter.visitMethod(ACC_PUBLIC, <span class="hljs-string">&quot;test&quot;</span>,
+        <span class="hljs-string">&quot;(Ljava/lang/String;Ljava/util/function/Consumer;)V&quot;</span>,
+        <span class="hljs-string">&quot;&lt;T:Ljava/io/InputStream;&gt;(Ljava/lang/String;Ljava/util/function/Consumer&lt;Ljava/util/function/BiConsumer&lt;Ljava/io/InputStream;Ljava/lang/Integer;&gt;;&gt;;)V&quot;</span>,
+        <span class="hljs-keyword">new</span> String[]&#123;<span class="hljs-string">&quot;java/io/IOException&quot;</span>&#125;);
+AnnotationVisitor av = mv.visitTypeAnnotation(newTypeParameterReference(METHOD_TYPE_PARAMETER, <span class="hljs-number">0</span>).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// test</span>
+av = mv.visitTypeAnnotation(newTypeParameterBoundReference(METHOD_TYPE_PARAMETER_BOUND, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testA</span>
+av = mv.visitTypeAnnotation(newExceptionReference(<span class="hljs-number">0</span>).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testD</span>
+av = mv.visitTypeAnnotation(newTypeReference(METHOD_RECEIVER).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testB</span>
+av = mv.visitTypeAnnotation(newFormalParameterReference(<span class="hljs-number">0</span>).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testC</span>
+mv.visitCode();
+
+<span class="hljs-comment">// try-with-resource ---------------------</span>
+Label label0 = <span class="hljs-keyword">new</span> Label(), label1 = <span class="hljs-keyword">new</span> Label(), label2 = <span class="hljs-keyword">new</span> Label();
+mv.visitTryCatchBlock(label0, label1, label2, <span class="hljs-string">&quot;java/lang/Throwable&quot;</span>);
+Label label3 = <span class="hljs-keyword">new</span> Label(), label4 = <span class="hljs-keyword">new</span> Label(), label5 = <span class="hljs-keyword">new</span> Label();
+mv.visitTryCatchBlock(label3, label4, label5, <span class="hljs-string">&quot;java/lang/Throwable&quot;</span>);
+
+Label start = <span class="hljs-keyword">new</span> Label();
+mv.visitLabel(label6);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">0</span>); <span class="hljs-comment">// this</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">1</span>); <span class="hljs-comment">// file</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;TestMain&quot;</span>, <span class="hljs-string">&quot;testFile&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/String;)Ljava/io/InputStream;&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">3</span>); <span class="hljs-comment">// input</span>
+        
+av = mv.visitInsnAnnotation(newTypeArgumentReference(CAST, <span class="hljs-number">0</span>).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testF</span>
+        
+mv.visitLabel(label0);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">2</span>); <span class="hljs-comment">// consumer</span>
+mv.visitInvokeDynamicInsn(<span class="hljs-string">&quot;accept&quot;</span>,
+        <span class="hljs-string">&quot;()Ljava/util/function/BiConsumer;&quot;</span>, 
+        <span class="hljs-keyword">new</span> Handle(H_INVOKESTATIC, <span class="hljs-string">&quot;java/lang/invoke/LambdaMetafactory&quot;</span>, <span class="hljs-string">&quot;metafactory&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;&quot;</span>, <span class="hljs-keyword">false</span>),
+        <span class="hljs-keyword">new</span> Object[]&#123;
+                Type.getType(<span class="hljs-string">&quot;(Ljava/lang/Object;Ljava/lang/Object;)V&quot;</span>),
+                <span class="hljs-keyword">new</span> Handle(H_INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/InputStream&quot;</span>, <span class="hljs-string">&quot;mark&quot;</span>, <span class="hljs-string">&quot;(I)V&quot;</span>, <span class="hljs-keyword">false</span>), 
+                Type.getType(<span class="hljs-string">&quot;(Ljava/io/InputStream;Ljava/lang/Integer;)V&quot;</span>)
+        &#125;
+);
+
+av = mv.visitInsnAnnotation(newTypeReference(METHOD_REFERENCE, <span class="hljs-number">0</span>).value(), <span class="hljs-keyword">null</span>, <span class="hljs-string">&quot;LTest;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testG</span>
+        
+mv.visitMethodInsn(INVOKEINTERFACE, <span class="hljs-string">&quot;java/util/function/Consumer&quot;</span>, <span class="hljs-string">&quot;accept&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Object;)V&quot;</span>, <span class="hljs-keyword">true</span>);
+
+<span class="hljs-comment">// try-with-resource closing</span>
+mv.visitLabel(label1);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">3</span>);
+Label label7 = <span class="hljs-keyword">new</span> Label();
+mv.visitJumpInsn(IFNULL, label7);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">3</span>);
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/InputStream&quot;</span>, <span class="hljs-string">&quot;close&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitJumpInsn(GOTO, label7);
+
+mv.visitLabel(label2);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">4</span>); <span class="hljs-comment">// (exception)</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">3</span>); <span class="hljs-comment">// input</span>
+
+Label label8 = <span class="hljs-keyword">new</span> Label();
+mv.visitJumpInsn(IFNULL, label8);
+mv.visitLabel(label3);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">3</span>); <span class="hljs-comment">// input</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/io/InputStream&quot;</span>, <span class="hljs-string">&quot;close&quot;</span>, <span class="hljs-string">&quot;()V&quot;</span>, <span class="hljs-keyword">false</span>);
+mv.visitLabel(label4);
+mv.visitJumpInsn(GOTO, label8);
+
+mv.visitLabel(label5);
+mv.visitVarInsn(ASTORE, <span class="hljs-number">5</span>); <span class="hljs-comment">// (exception 2)</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">4</span>); <span class="hljs-comment">// (exception)</span>
+mv.visitVarInsn(ALOAD, <span class="hljs-number">5</span>); <span class="hljs-comment">// (exception 2)</span>
+mv.visitMethodInsn(INVOKEVIRTUAL, <span class="hljs-string">&quot;java/lang/Throwable&quot;</span>, <span class="hljs-string">&quot;addSuppressed&quot;</span>, <span class="hljs-string">&quot;(Ljava/lang/Throwable;)V&quot;</span>, <span class="hljs-keyword">false</span>);
+ 
+mv.visitLabel(label8);
+mv.visitVarInsn(ALOAD, <span class="hljs-number">4</span>); <span class="hljs-comment">// (exception)</span>
+mv.visitInsn(ATHROW);
+
+<span class="hljs-comment">// try-with-resource end</span>
+mv.visitLabel(label7);
+mv.visitLineNumber(<span class="hljs-number">49</span>, label7);
+mv.visitInsn(RETURN);
+
+<span class="hljs-comment">// LVT</span>
+Label label9 = <span class="hljs-keyword">new</span> Label();
+mv.visitLabel(label9);
+mv.visitLocalVariable(<span class="hljs-string">&quot;input&quot;</span>, <span class="hljs-string">&quot;Ljava/io/InputStream;&quot;</span>, <span class="hljs-string">&quot;TT;&quot;</span>, label0, label7, <span class="hljs-number">3</span>);
+mv.visitLocalVariable(<span class="hljs-string">&quot;this&quot;</span>, <span class="hljs-string">&quot;LTestMain;&quot;</span>, <span class="hljs-keyword">null</span>, start, label9, <span class="hljs-number">0</span>);
+mv.visitLocalVariable(<span class="hljs-string">&quot;file&quot;</span>, <span class="hljs-string">&quot;Ljava/lang/String;&quot;</span>, <span class="hljs-keyword">null</span>, start, label9, <span class="hljs-number">1</span>);
+mv.visitLocalVariable(<span class="hljs-string">&quot;consumer&quot;</span>, <span class="hljs-string">&quot;Ljava/util/function/Consumer;&quot;</span>, <span class="hljs-string">&quot;Ljava/util/function/Consumer&lt;Ljava/util/function/BiConsumer&lt;Ljava/io/InputStream;Ljava/lang/Integer;&gt;;&gt;;&quot;</span>, label6, label9, <span class="hljs-number">2</span>);
+
+av = methodVisitor.visitLocalVariableAnnotation(newTypeReference(RESOURCE_VARIABLE).value(), <span class="hljs-keyword">null</span>, <span class="hljs-keyword">new</span> Label[]&#123;label0&#125;, <span class="hljs-keyword">new</span> Label[]&#123;label7&#125;, <span class="hljs-keyword">new</span> <span class="hljs-keyword">int</span>[]&#123;<span class="hljs-number">3</span>&#125;, <span class="hljs-string">&quot;Lio/github/nickid2018/asmtest/ASMMain$TestA;&quot;</span>, <span class="hljs-keyword">true</span>);
+<span class="hljs-comment">// testE</span>
+
+mv.visitMaxs(<span class="hljs-number">2</span>, <span class="hljs-number">6</span>);
+mv.visitEnd();</code></pre>
+<h3 id="方法形式参数上的注解"><a href="#方法形式参数上的注解" class="headerlink" title="方法形式参数上的注解"></a>方法形式参数上的注解</h3><p>等下，我们刚刚不是说过形式参数上怎么插入注解了吗？事实上，形式参数可以使用两种注解：<br>一种是标记为<code>TYPE_USE</code>的类型注解，另一种是标记为<code>PARAMETER</code>的形式参数注解。如果一个注解同时拥有这两个标志，就都要写入字节码。</p>
+<p>写入形式参数注解需要两步：写入注解形式参数数量、写入形式参数注解。</p>
+<p>写入注解形式参数数量需要使用<code>visitAnnotableParameterCount</code>方法。假设我们有一个方法：</p>
+<pre><code class="hljs java"><span class="hljs-comment">// 仍然使用上一个例子中的类型</span>
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">test</span><span class="hljs-params">(TestMain <span class="hljs-keyword">this</span>, String s, <span class="hljs-meta">@Test(&quot;test&quot;)</span> <span class="hljs-keyword">int</span> i)</span></span></code></pre>
+<p>它的形式参数是两个，因为<strong>接收器 this 不是形式参数</strong>。写入如下：</p>
+<pre><code class="hljs java">mv.visitAnnotableParameterCount(<span class="hljs-number">2</span>, <span class="hljs-keyword">true</span>);</code></pre>
+<p>第二个参数代表了注解的<strong>可见性</strong>。</p>
+<p>写入形式参数注解需要使用<code>visitParameterAnnotation</code>，参数类似定义注解的使用方法。</p>
+<p>请注意：如果形式参数列表中同时存在运行时可见和不可见的注解，那么先写<code>visitAnnotableParameterCount</code>，可见性为<code>true</code>，在后面写出所有运行时可见的注解；之后再一行<code>visitAnnotableParameterCount</code>，可见性为<code>false</code>，在后面写出所有运行时不可见的注解。<code>visitAnnotableParameterCount</code>对于每个可见性只出现一次。</p>
+<h3 id="注解类型中的-default-默认值"><a href="#注解类型中的-default-默认值" class="headerlink" title="注解类型中的 default 默认值"></a>注解类型中的 default 默认值</h3><p>在类的结构二中，我们说到了有默认值的注解属性怎么写入。它使用的是<code>visitAnnotationDefault</code>方法。</p>
+<p>它返回的<code>AnnotationVisitor</code>需要写入一个<code>name</code>为<code>null</code>的属性，这个属性写入什么值和怎么写入取决于你要决定的默认值。</p>
+<hr>
+<p>到这里有关于注解的相关知识都已经说完了，下篇专栏可能是 ASM Tree API 部分。</p>
 
       </section>
 
@@ -618,7 +754,7 @@ List&lt;? <span class="hljs-keyword">super</span> Outer.Inner&lt;<span class="hl
     <span>TOC</span>
   </div>
   <div class="widget-body">
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%B3%A8%E8%A7%A3%E4%BF%A1%E6%81%AF"><span class="toc-number">1.</span> <span class="toc-text">写入注解信息</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%B8%B8%E9%87%8F"><span class="toc-number">1.1.</span> <span class="toc-text">写入常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%9E%9A%E4%B8%BE%E5%B8%B8%E9%87%8F"><span class="toc-number">1.2.</span> <span class="toc-text">写入枚举常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%85%B6%E4%BB%96%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.3.</span> <span class="toc-text">写入其他注解类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%95%B0%E7%BB%84"><span class="toc-number">1.4.</span> <span class="toc-text">写入数组</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%B8%A6%E6%9C%89-Repeatable%E6%B3%A8%E8%A7%A3%E7%9A%84%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.5.</span> <span class="toc-text">写入带有@Repeatable注解的注解类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%8F%AF%E8%A7%81%E6%80%A7"><span class="toc-number">2.</span> <span class="toc-text">注解类型的可见性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%9A%84%E5%86%99%E5%85%A5%E4%BD%8D%E7%BD%AE"><span class="toc-number">3.</span> <span class="toc-text">注解的写入位置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%92%8C%E7%B1%BB%E6%88%90%E5%91%98%E5%AE%9A%E4%B9%89%E6%97%B6%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.1.</span> <span class="toc-text">类和类成员定义时的注解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.2.</span> <span class="toc-text">类型的注解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E8%B7%AF%E5%BE%84"><span class="toc-number">3.2.1.</span> <span class="toc-text">类型路径</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E5%BC%95%E7%94%A8"><span class="toc-number">3.2.2.</span> <span class="toc-text">类型引用</span></a></li></ol></li></ol></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%B3%A8%E8%A7%A3%E4%BF%A1%E6%81%AF"><span class="toc-number">1.</span> <span class="toc-text">写入注解信息</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%B8%B8%E9%87%8F"><span class="toc-number">1.1.</span> <span class="toc-text">写入常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%9E%9A%E4%B8%BE%E5%B8%B8%E9%87%8F"><span class="toc-number">1.2.</span> <span class="toc-text">写入枚举常量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%85%B6%E4%BB%96%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.3.</span> <span class="toc-text">写入其他注解类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E6%95%B0%E7%BB%84"><span class="toc-number">1.4.</span> <span class="toc-text">写入数组</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E5%85%A5%E5%B8%A6%E6%9C%89-Repeatable%E6%B3%A8%E8%A7%A3%E7%9A%84%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B"><span class="toc-number">1.5.</span> <span class="toc-text">写入带有@Repeatable注解的注解类型</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%8F%AF%E8%A7%81%E6%80%A7"><span class="toc-number">2.</span> <span class="toc-text">注解类型的可见性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%9A%84%E5%86%99%E5%85%A5%E4%BD%8D%E7%BD%AE"><span class="toc-number">3.</span> <span class="toc-text">注解的写入位置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%92%8C%E7%B1%BB%E6%88%90%E5%91%98%E5%AE%9A%E4%B9%89%E6%97%B6%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.1.</span> <span class="toc-text">类和类成员定义时的注解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.2.</span> <span class="toc-text">类型的注解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E8%B7%AF%E5%BE%84"><span class="toc-number">3.2.1.</span> <span class="toc-text">类型路径</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E5%BC%95%E7%94%A8"><span class="toc-number">3.2.2.</span> <span class="toc-text">类型引用</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E5%BD%A2%E5%BC%8F%E5%8F%82%E6%95%B0%E4%B8%8A%E7%9A%84%E6%B3%A8%E8%A7%A3"><span class="toc-number">3.3.</span> <span class="toc-text">方法形式参数上的注解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B3%A8%E8%A7%A3%E7%B1%BB%E5%9E%8B%E4%B8%AD%E7%9A%84-default-%E9%BB%98%E8%AE%A4%E5%80%BC"><span class="toc-number">3.4.</span> <span class="toc-text">注解类型中的 default 默认值</span></a></li></ol></li></ol>
   </div>
 </section>
 
