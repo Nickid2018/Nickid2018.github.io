@@ -207,16 +207,16 @@ Map<String, List<@A Object>>
 
 ```java
 Map<String, List<@A Object>>
-  -List<@A Object> // kind = TYPE_ARGUMENT, index = 1
-    -@A Object // kind = TYPE_ARGUMENT, index = 0
+  - List<@A Object> // kind = TYPE_ARGUMENT, index = 1
+    - @A Object // kind = TYPE_ARGUMENT, index = 0
 ```
 
 对于数组来说，注解的位置影响了它的路径长度，下面是按照 A 注解类型路径长度逐渐增大排序的注解示例：
 
 ```java
-String@A[][][] // 路径长度0
-String[]@A[][] // 路径长度1
-String[][]@A[] // 路径长度2
+String @A[][][] // 路径长度0
+String []@A[][] // 路径长度1
+String [][]@A[] // 路径长度2
 @A String[][][] // 路径长度3
 ```
 
@@ -250,7 +250,7 @@ TypePath 的所有信息。对于每一步，都有一个对应关系，这些�
 
 类型引用本质上是一个 int，其中第25~32位是引用的类型，1~24位是引用的参数。ASM 库提供了`TypeReference`类来简化创建这些数字的代码。
 
-先来说说无参的类型引用类型，这些类型可以使用`newTypeReference`创建 TypeReference 对象，之后通过`value`方法获得 int
+先来说说无参的类型引用类型，这些类型可以使用`newTypeReference`创建 TypeReference 对象，之后通过`getValue`方法获得 int
 形式的类型引用，如下表：
 
 |          类型           |                     传入方法                      | 说明               |
@@ -346,15 +346,15 @@ MethodVisitor mv = classWriter.visitMethod(ACC_PUBLIC, "test",
         "(Ljava/lang/String;Ljava/util/function/Consumer;)V",
         "<T:Ljava/io/InputStream;>(Ljava/lang/String;Ljava/util/function/Consumer<Ljava/util/function/BiConsumer<Ljava/io/InputStream;Ljava/lang/Integer;>;>;)V",
         new String[]{"java/io/IOException"});
-AnnotationVisitor av = mv.visitTypeAnnotation(newTypeParameterReference(METHOD_TYPE_PARAMETER, 0).value(), null, "LTest;", true);
+AnnotationVisitor av = mv.visitTypeAnnotation(newTypeParameterReference(METHOD_TYPE_PARAMETER, 0).getValue(), null, "LTest;", true);
 // test
-av = mv.visitTypeAnnotation(newTypeParameterBoundReference(METHOD_TYPE_PARAMETER_BOUND, 0, 0).value(), null, "LTest;", true);
+av = mv.visitTypeAnnotation(newTypeParameterBoundReference(METHOD_TYPE_PARAMETER_BOUND, 0, 0).getValue(), null, "LTest;", true);
 // testA
-av = mv.visitTypeAnnotation(newExceptionReference(0).value(), null, "LTest;", true);
+av = mv.visitTypeAnnotation(newExceptionReference(0).getValue(), null, "LTest;", true);
 // testD
-av = mv.visitTypeAnnotation(newTypeReference(METHOD_RECEIVER).value(), null, "LTest;", true);
+av = mv.visitTypeAnnotation(newTypeReference(METHOD_RECEIVER).getValue(), null, "LTest;", true);
 // testB
-av = mv.visitTypeAnnotation(newFormalParameterReference(0).value(), null, "LTest;", true);
+av = mv.visitTypeAnnotation(newFormalParameterReference(0).getValue(), null, "LTest;", true);
 // testC
 mv.visitCode();
 
@@ -371,7 +371,7 @@ mv.visitVarInsn(ALOAD, 1); // file
 mv.visitMethodInsn(INVOKEVIRTUAL, "TestMain", "testFile", "(Ljava/lang/String;)Ljava/io/InputStream;", false);
 mv.visitVarInsn(ASTORE, 3); // input
         
-av = mv.visitInsnAnnotation(newTypeArgumentReference(CAST, 0).value(), null, "LTest;", true);
+av = mv.visitInsnAnnotation(newTypeArgumentReference(CAST, 0).getValue(), null, "LTest;", true);
 // testF
         
 mv.visitLabel(label0);
@@ -386,7 +386,7 @@ mv.visitInvokeDynamicInsn("accept",
         }
 );
 
-av = mv.visitInsnAnnotation(newTypeReference(METHOD_REFERENCE, 0).value(), null, "LTest;", true);
+av = mv.visitInsnAnnotation(newTypeReference(METHOD_REFERENCE, 0).getValue(), null, "LTest;", true);
 // testG
         
 mv.visitMethodInsn(INVOKEINTERFACE, "java/util/function/Consumer", "accept", "(Ljava/lang/Object;)V", true);
@@ -435,7 +435,7 @@ mv.visitLocalVariable("this", "LTestMain;", null, start, label9, 0);
 mv.visitLocalVariable("file", "Ljava/lang/String;", null, start, label9, 1);
 mv.visitLocalVariable("consumer", "Ljava/util/function/Consumer;", "Ljava/util/function/Consumer<Ljava/util/function/BiConsumer<Ljava/io/InputStream;Ljava/lang/Integer;>;>;", label6, label9, 2);
 
-av = methodVisitor.visitLocalVariableAnnotation(newTypeReference(RESOURCE_VARIABLE).value(), null, new Label[]{label0}, new Label[]{label7}, new int[]{3}, "Lio/github/nickid2018/asmtest/ASMMain$TestA;", true);
+av = methodVisitor.visitLocalVariableAnnotation(newTypeReference(RESOURCE_VARIABLE).getValue(), null, new Label[]{label0}, new Label[]{label7}, new int[]{3}, "Lio/github/nickid2018/asmtest/ASMMain$TestA;", true);
 // testE
 
 mv.visitMaxs(2, 6);
