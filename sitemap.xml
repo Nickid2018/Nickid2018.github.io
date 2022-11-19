@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://nickid2018.github.io/2022/11/05/Java%20ASM%20%E6%B5%8B%E8%AF%95%E9%A2%98%EF%BC%88%E4%B8%80%EF%BC%89/</loc>
+    
+    <lastmod>2022-11-04</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>http://nickid2018.github.io/2022/10/21/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E6%B3%A8%E8%A7%A3/</loc>
     
     <lastmod>2022-10-26</lastmod>
@@ -123,7 +130,7 @@
 
   <url>
     <loc>http://nickid2018.github.io/</loc>
-    <lastmod>2022-10-26</lastmod>
+    <lastmod>2022-11-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -131,21 +138,21 @@
   
   <url>
     <loc>http://nickid2018.github.io/tags/Java/</loc>
-    <lastmod>2022-10-26</lastmod>
+    <lastmod>2022-11-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>http://nickid2018.github.io/tags/ASM/</loc>
-    <lastmod>2022-10-26</lastmod>
+    <lastmod>2022-11-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>http://nickid2018.github.io/tags/JEP/</loc>
-    <lastmod>2022-10-26</lastmod>
+    <lastmod>2022-11-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
@@ -154,7 +161,7 @@
   
   <url>
     <loc>http://nickid2018.github.io/categories/Java/</loc>
-    <lastmod>2022-10-26</lastmod>
+    <lastmod>2022-11-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>

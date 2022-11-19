@@ -40,7 +40,7 @@
 
   
 
-  <title>Java ASM详解： 基础知识 | Nickid2018的博客</title>
+  <title>Java ASM 测试题（一） | Nickid2018的博客</title>
 
   
 
@@ -121,11 +121,11 @@
     <div class="header-content">
       <div class="post-text layout-block">
         <div class="layout-margin">
-          <h1 class="title-wrap">Java ASM详解： 基础知识</h1>
+          <h1 class="title-wrap">Java ASM 测试题（一）</h1>
           <h2 class="title-sub-wrap">
             <strong>Nickid2018</strong>
             <span>发布于</span>
-            <time  class="article-date" datetime="2020-07-23T00:00:00.000Z" itemprop="datePublished">2020-07-23</time>
+            <time  class="article-date" datetime="2022-11-05T00:00:00.000Z" itemprop="datePublished">2022-11-05</time>
           </h2>
           <ul class="wrap-list dark">
   
@@ -160,113 +160,18 @@
       
       
       <section class="article-entry markdown-body layout-margin content-padding--large soft-size--large soft-style--box">
-        <h2 id="ASM是什么，字节码又是什么"><a href="#ASM是什么，字节码又是什么" class="headerlink" title="ASM是什么，字节码又是什么"></a>ASM是什么，字节码又是什么</h2><blockquote>
-<p>ASM是一个Java字节码分析、创建和修改的开源应用框架。它可以动态生成二进制格式的stub类或其他代理类，或者在类被Java虚拟机装入内存之前，动态修改类。在ASM中提供了诸多的API用于对类的内容进行字节码操作的方法。与传统的BCEL和SERL不同，在ASM中提供了更为优雅和灵活的操作字节码的方式</p>
-</blockquote>
-<p>这是ASM官网上给出的<del>没用解释</del>，一句话概括：ASM是一个修改，分析Java类文件的框架。先抛开ASM框架的基本定义，先来看看字节码是什么</p>
-<blockquote>
-<p>字节码（Byte-code）是一种包含执行程序，由一序列 op 代码/数据对组成的二进制文件</p>
-</blockquote>
-<p>又是一段<del>废话</del>。从这里可以的知，字节码是一种介于翻译语言和底层语言的东西，与底层语言（C/C++）相比较你可以从它这里知道程序的运行方式，而与翻译语言（JavaScript）对比来看，你又无法从字节码中轻易看出什么。但是由于字节码的这个特性，我们得以修改它，操纵它，并且我们还可以反编译它。</p>
-<hr>
-<p><img src="/resources/2021030701/asm_picture.jpg" alt="ASM图标"></p>
-<p>官网：<a target="_blank" rel="noopener" href="https://asm.ow2.io/">https://asm.ow2.io/</a></p>
-<h2 id="添加ASM库依赖"><a href="#添加ASM库依赖" class="headerlink" title="添加ASM库依赖"></a>添加ASM库依赖</h2><p>首先，是有关于ASM的Maven依赖<br><pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
-    <span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
-    <span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-all<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
-    <span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>6.0_BETA<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
-<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre></p>
-<p>或者</p>
-<pre><code class="hljs XML"><span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
-<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span>
-<span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-commons<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
-<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span>
-<span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-tree<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
-<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span>
-<span class="hljs-tag">&lt;<span class="hljs-name">dependency</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">groupId</span>&gt;</span>org.ow2.asm<span class="hljs-tag">&lt;/<span class="hljs-name">groupId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">artifactId</span>&gt;</span>asm-analysis<span class="hljs-tag">&lt;/<span class="hljs-name">artifactId</span>&gt;</span>
-	<span class="hljs-tag">&lt;<span class="hljs-name">version</span>&gt;</span>9.0<span class="hljs-tag">&lt;/<span class="hljs-name">version</span>&gt;</span>
-<span class="hljs-tag">&lt;/<span class="hljs-name">dependency</span>&gt;</span></code></pre>
-<p>如果使用第一种，那么你最高能依赖的版本是6.0_BETA。而第二种是现在仍在持续更新的，它相当于把原先的asm-all库分开成为不同的部分，但是基本的asm库是必须的。</p>
-<p>这个库以后会详细讲述，这里先说几个强有力的工具。</p>
-<h2 id="帮助学习ASM的工具"><a href="#帮助学习ASM的工具" class="headerlink" title="帮助学习ASM的工具"></a>帮助学习ASM的工具</h2><h3 id="ASMifier-自动生成ASM代码"><a href="#ASMifier-自动生成ASM代码" class="headerlink" title="ASMifier: 自动生成ASM代码"></a>ASMifier: 自动生成ASM代码</h3><p>ASM库中有不少实用类，为了了解晦涩难懂的ASM代码，可以用ASMifier来进行解析。这是一个可执行类，你可以通过java.exe运行它。</p>
-<font color="#ff0000">注意：在9.0已经没有这个类了</font>
-
-<p>运行方法：下载ASM的jar（比如asm-all-6.0_beta.jar）或者从你的.m2文件夹（asm-all）里面找到它，然后运行：</p>
-<pre><code class="hljs SH">java -classpath asm-all-6.0_BETA.jar org.objectweb.asm.util.ASMifier DemoDump.class</code></pre>
-<p>你会得到这样的输出：</p>
-<p><img src="/resources/2021030701/asmifier_run.png" alt="运行ASMifier的效果"></p>
-<h3 id="javap-exe-Java自带的字节码解析工具"><a href="#javap-exe-Java自带的字节码解析工具" class="headerlink" title="javap.exe: Java自带的字节码解析工具"></a>javap.exe: Java自带的字节码解析工具</h3><p>javap是你在安装JDK时就有的一个程序文件，是JDK的原生字节码解析工具，关于它的使用因篇幅有限不再细说，可以参考这篇文章 <a target="_blank" rel="noopener" href="https://www.cnblogs.com/frinder6/articles/5440173.html">https://www.cnblogs.com/frinder6/articles/5440173.html</a></p>
-<p><img src="/resources/2021030701/javap_run.png" alt="运行javap的效果"></p>
-<h3 id="Eclipse插件-Enhanced-Class-Decompiler"><a href="#Eclipse插件-Enhanced-Class-Decompiler" class="headerlink" title="Eclipse插件: Enhanced Class Decompiler"></a>Eclipse插件: Enhanced Class Decompiler</h3><p>这个插件是反编译器，可以在你没有库的源代码时反编译出源代码进行调试。当然，这个也可以作为你ASM程序的结果测试方案，通常反编译结果会很贴近于源代码，如果相差很大可以换一种方式反编译。</p>
-<hr>
-<h2 id="ASM中经常会用到的名词"><a href="#ASM中经常会用到的名词" class="headerlink" title="ASM中经常会用到的名词"></a>ASM中经常会用到的名词</h2><h3 id="类-型-的不同名称"><a href="#类-型-的不同名称" class="headerlink" title="类(型)的不同名称"></a>类(型)的不同名称</h3><ul>
-<li>类的二进制名称/类全名/简单名称</li>
-</ul>
-<p>这个三个名称是等价的，也就是我们平常说的类名，例如 java.lang.Thread java.lang.Thread$UncaughtExceptionHandler这样的名称。</p>
-<ul>
-<li>全限定名</li>
-</ul>
-<p>这个名称是用于class文件中的名称，其实就是将二进制名称的所有”.”换为”/“，这个名称只有非数组引用类型才有。例如 java/lang/Thread   java/io/IOException。</p>
-<ul>
-<li>类型描述符</li>
-</ul>
-<p>类型描述符是有关于class文件内定义字段等的类型的名称。</p>
-<h3 id="类型描述符"><a href="#类型描述符" class="headerlink" title="类型描述符"></a>类型描述符</h3><ul>
-<li>原始类型的描述符一一对应</li>
-</ul>
-<p>原始类型的描述符都对应相应的一个字母，具体来说是这样的：</p>
-<pre><code class="hljs Java"><span class="hljs-keyword">byte</span> -&gt; B
-<span class="hljs-keyword">short</span> -&gt; S
-<span class="hljs-keyword">int</span> -&gt; I
-<span class="hljs-keyword">long</span> -&gt; J
-<span class="hljs-keyword">float</span> -&gt; F
-<span class="hljs-keyword">double</span> -&gt; D
-<span class="hljs-keyword">char</span> -&gt; C
-<span class="hljs-keyword">void</span> -&gt; V
-<span class="hljs-keyword">boolean</span> -&gt; Z</code></pre>
-<ul>
-<li><p>非数组的引用类型为 L+全限定名+;</p>
-</li>
-<li><p>数组引用类型为 [+数组内类型的描述符</p>
-</li>
-</ul>
-<p>例子:</p>
-<pre><code class="hljs Java">java.lang.Thread -&gt; Ljava/lang/Thread;
-java.lang.Object[] -&gt; [Ljava/lang/Object;
-<span class="hljs-keyword">int</span>[][] -&gt; [[I</code></pre>
-<h3 id="方法描述符"><a href="#方法描述符" class="headerlink" title="方法描述符"></a>方法描述符</h3><p>了解类名称和类型描述符，下面讲一下方法描述符（其实类型描述符和方法描述符统称描述符）</p>
-<p>方法描述符是class文件中保存参数类型列表和返回值类型的方式，在各种方法调用的操作码里面都会涉及到。</p>
-<p>规则：</p>
+        <p><h1 style="text-align: center">Java ASM 测试题（一）</h1><br><span style="float: right">作者：Nickid2018<br>满分：100<br>时间：30min</span><br><br><br><br></p>
+<h2 id="单项选择题（每小题2分，共计20分）"><a href="#单项选择题（每小题2分，共计20分）" class="headerlink" title="单项选择题（每小题2分，共计20分）"></a>单项选择题（每小题2分，共计20分）</h2><p><strong><em>在此小节中，每道题有且仅有一项正确答案。</em></strong></p>
 <ol>
-<li>格式为 ( + 参数列表 + ) + 返回值</li>
-<li>所有类型名称都为类型描述符</li>
-<li>参数列表中不需要逗号分隔</li>
+<li>下面哪个是正确的<strong>方法描述符</strong>。（）<ul>
+<li>A. <code>(Ljava/lang/String;)L</code></li>
+<li>B. <code>(java/lang/String)I</code></li>
+<li>C. <code>(TLjava/lang/String;)B</code></li>
+<li>D. <code>(ILjava/lang/String;)Z</code></li>
+</ul>
+</li>
+<li></li>
 </ol>
-<p>下面是抽象含义下的具体例子（省略了参数名称，只保留了参数类型）：</p>
-<pre><code class="hljs Java"><span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">a</span><span class="hljs-params">(<span class="hljs-keyword">int</span>,<span class="hljs-keyword">int</span>,<span class="hljs-keyword">int</span>)</span> -&gt; <span class="hljs-params">(III)</span>V</span>
-<span class="hljs-function">String <span class="hljs-title">s</span><span class="hljs-params">(<span class="hljs-keyword">double</span>[],<span class="hljs-keyword">boolean</span>)</span> -&gt; <span class="hljs-params">([DZ)</span>Ljava/lang/String</span>;
-<span class="hljs-keyword">int</span>[] i(Object) -&gt; (Ljava/lang/Object;)[<span class="hljs-function">I</span>
-<span class="hljs-function"><span class="hljs-keyword">void</span> <span class="hljs-title">t</span><span class="hljs-params">()</span> -&gt; <span class="hljs-params">()</span>V</span></code></pre>
-<h3 id="操作码-OpCode"><a href="#操作码-OpCode" class="headerlink" title="操作码(OpCode)"></a>操作码(OpCode)</h3><p>Opcode是用于JVM解释运行Java程序的关键。每一个Opcode都有自己独特的含义与操作，如0x60，助记符iadd，将两个int相加。</p>
-<p>有一点要注意：操作码其实就是一个数字，我们平时经常看到的<code>iadd</code>，<code>invokestatic</code>并不是操作码，而是助记符。</p>
-<p>而Java中字节码的名称也与操作码有关，因为每个操作码都是用一个字节，所以叫字节码。</p>
-<p>每一个字节用来表示一个指令，理论上可以有 256 个操作码。</p>
-<p>对于ASM库来说，所有的Opcode都存储于<code>org.objectweb.asm.Opcodes</code>里面，其中还有包括它们在什么方法中作用的注释。</p>
-<p>有关于所有操作码的网页：<a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html">https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html</a></p>
-<hr>
-<p>这是ASM系列的第一篇，之后会持续更新。</p>
-<p>bilibili专栏同步： <a target="_blank" rel="noopener" href="https://www.bilibili.com/read/cv6875366">https://www.bilibili.com/read/cv6875366</a></p>
 
       </section>
 
@@ -274,20 +179,20 @@ java.lang.Object[] -&gt; [Ljava/lang/Object;
       
         <nav class="article-nav">
           
+          
             <div class="article-nav-item layout-padding">
   <article class="card-container article-nav-card content-padding--primary soft-size--large soft-style--box">
     
     <div class="card-text">
       
-        <a href="/2021/02/13/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9AASM%E5%BA%93%E4%BD%BF%E7%94%A8/" itemprop="url">
-          <h2 class="card-text--title text-ellipsis">Java ASM详解：ASM库使用</h2>
+        <a href="/2022/10/21/Java%20ASM%E8%AF%A6%E8%A7%A3%EF%BC%9A%E6%B3%A8%E8%A7%A3/" itemprop="url">
+          <h2 class="card-text--title text-ellipsis">Java ASM详解：注解</h2>
         </a>
       
-      <div class="card-text--row">Newer</div>
+      <div class="card-text--row">Older</div>
     </div>
   </article>
 </div>
-          
           
         </nav>
       
@@ -366,7 +271,7 @@ java.lang.Object[] -&gt; [Ljava/lang/Object;
     <span>TOC</span>
   </div>
   <div class="widget-body">
-    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#ASM%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%8C%E5%AD%97%E8%8A%82%E7%A0%81%E5%8F%88%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">1.</span> <span class="toc-text">ASM是什么，字节码又是什么</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0ASM%E5%BA%93%E4%BE%9D%E8%B5%96"><span class="toc-number">2.</span> <span class="toc-text">添加ASM库依赖</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%AE%E5%8A%A9%E5%AD%A6%E4%B9%A0ASM%E7%9A%84%E5%B7%A5%E5%85%B7"><span class="toc-number">3.</span> <span class="toc-text">帮助学习ASM的工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ASMifier-%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90ASM%E4%BB%A3%E7%A0%81"><span class="toc-number">3.1.</span> <span class="toc-text">ASMifier: 自动生成ASM代码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#javap-exe-Java%E8%87%AA%E5%B8%A6%E7%9A%84%E5%AD%97%E8%8A%82%E7%A0%81%E8%A7%A3%E6%9E%90%E5%B7%A5%E5%85%B7"><span class="toc-number">3.2.</span> <span class="toc-text">javap.exe: Java自带的字节码解析工具</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Eclipse%E6%8F%92%E4%BB%B6-Enhanced-Class-Decompiler"><span class="toc-number">3.3.</span> <span class="toc-text">Eclipse插件: Enhanced Class Decompiler</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ASM%E4%B8%AD%E7%BB%8F%E5%B8%B8%E4%BC%9A%E7%94%A8%E5%88%B0%E7%9A%84%E5%90%8D%E8%AF%8D"><span class="toc-number">4.</span> <span class="toc-text">ASM中经常会用到的名词</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB-%E5%9E%8B-%E7%9A%84%E4%B8%8D%E5%90%8C%E5%90%8D%E7%A7%B0"><span class="toc-number">4.1.</span> <span class="toc-text">类(型)的不同名称</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%9E%8B%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">4.2.</span> <span class="toc-text">类型描述符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E6%8F%8F%E8%BF%B0%E7%AC%A6"><span class="toc-number">4.3.</span> <span class="toc-text">方法描述符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%A0%81-OpCode"><span class="toc-number">4.4.</span> <span class="toc-text">操作码(OpCode)</span></a></li></ol></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%95%E9%A1%B9%E9%80%89%E6%8B%A9%E9%A2%98%EF%BC%88%E6%AF%8F%E5%B0%8F%E9%A2%982%E5%88%86%EF%BC%8C%E5%85%B1%E8%AE%A120%E5%88%86%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">单项选择题（每小题2分，共计20分）</span></a></li></ol>
   </div>
 </section>
 

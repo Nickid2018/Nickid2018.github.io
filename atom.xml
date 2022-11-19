@@ -6,7 +6,7 @@
   <link href="http://nickid2018.github.io/atom.xml" rel="self"/>
   
   <link href="http://nickid2018.github.io/"/>
-  <updated>2022-10-26T15:25:31.484Z</updated>
+  <updated>2022-11-04T17:22:35.142Z</updated>
   <id>http://nickid2018.github.io/</id>
   
   <author>
@@ -15,6 +15,32 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Java ASM 测试题（一）</title>
+    <link href="http://nickid2018.github.io/2022/11/05/Java%20ASM%20%E6%B5%8B%E8%AF%95%E9%A2%98%EF%BC%88%E4%B8%80%EF%BC%89/"/>
+    <id>http://nickid2018.github.io/2022/11/05/Java%20ASM%20%E6%B5%8B%E8%AF%95%E9%A2%98%EF%BC%88%E4%B8%80%EF%BC%89/</id>
+    <published>2022-11-05T00:00:00.000Z</published>
+    <updated>2022-11-04T17:22:35.142Z</updated>
+    
+    <content type="html"><![CDATA[<p><h1 style="text-align: center">Java ASM 测试题（一）</h1><br><span style="float: right">作者：Nickid2018<br>满分：100<br>时间：30min</span><br><br><br><br></p><h2 id="单项选择题（每小题2分，共计20分）"><a href="#单项选择题（每小题2分，共计20分）" class="headerlink" title="单项选择题（每小题2分，共计20分）"></a>单项选择题（每小题2分，共计20分）</h2><p><strong><em>在此小节中，每道题有且仅有一项正确答案。</em></strong></p><ol><li>下面哪个是正确的<strong>方法描述符</strong>。（）<ul><li>A. <code>(Ljava/lang/String;)L</code></li><li>B. <code>(java/lang/String)I</code></li><li>C. <code>(TLjava/lang/String;)B</code></li><li>D. <code>(ILjava/lang/String;)Z</code></li></ul></li><li></li></ol>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;&lt;h1 style=&quot;text-align: center&quot;&gt;Java ASM 测试题（一）&lt;/h1&gt;&lt;br&gt;&lt;span style=&quot;float: right&quot;&gt;作者：Nickid2018&lt;br&gt;满分：100&lt;br&gt;时间：30min&lt;/span&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;</summary>
+      
+    
+    
+    
+    <category term="Java" scheme="http://nickid2018.github.io/categories/Java/"/>
+    
+    
+    <category term="Java" scheme="http://nickid2018.github.io/tags/Java/"/>
+    
+    <category term="ASM" scheme="http://nickid2018.github.io/tags/ASM/"/>
+    
+  </entry>
   
   <entry>
     <title>Java ASM详解：注解</title>
