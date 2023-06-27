@@ -1,4 +1,7 @@
 /.idea
+/node_modules
+
 *.zip
 *.tar.gz
-/node_modules
+
+!resources/*
